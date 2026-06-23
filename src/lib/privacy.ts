@@ -1,4 +1,5 @@
 import type { AppSettings } from "../types";
+import { TOKEN_PATTERNS } from "./privacyPatterns";
 
 export type SensitivityLevel = "safe" | "maybe_sensitive" | "sensitive";
 
@@ -8,49 +9,6 @@ export interface PrivacyScanResult {
   reason?: string;
   matches: string[];
 }
-
-const TOKEN_PATTERNS: Array<{
-  name: string;
-  pattern: RegExp;
-}> = [
-  {
-    name: "private_key",
-    pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-  },
-  {
-    name: "jwt_token",
-    pattern: /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
-  },
-  {
-    name: "github_token",
-    pattern: /^(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}$/,
-  },
-  {
-    name: "openai_style_key",
-    pattern: /^sk-[A-Za-z0-9_-]{20,}$/,
-  },
-  {
-    name: "stripe_key",
-    pattern: /^(sk|pk)_(test|live)_[A-Za-z0-9]{20,}$/,
-  },
-  {
-    name: "aws_access_key",
-    pattern: /AKIA[0-9A-Z]{16}/,
-  },
-  {
-    name: "bearer_token",
-    pattern: /^Bearer\s+[A-Za-z0-9._~+/=-]{20,}$/i,
-  },
-  {
-    name: "database_url",
-    pattern: /\b(postgres|postgresql|mysql|mongodb|redis):\/\/[^\s]+/i,
-  },
-  {
-    name: "env_secret",
-    pattern:
-      /\b(api[_-]?key|secret|token|password|passwd|pwd)\s*[:=]\s*['"]?[^'"\s]{8,}/i,
-  },
-];
 
 function hasWhitespace(value: string): boolean {
   return /\s/.test(value);

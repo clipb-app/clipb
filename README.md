@@ -335,10 +335,10 @@ Thumbs.db
 - [ ] Ignore likely passwords
 - [ ] Ignore likely API keys/tokens
 - [ ] Add ignored apps list
-- [ ] Add minimum clip length setting
-- [ ] Add maximum clip length setting
+- [x] Add minimum clip length setting
+- [x] Add maximum clip length setting
 - [ ] Add private mode
-- [ ] Add temporary pause timer
+- [x] Add temporary pause timer
 
 ### v0.5 — Better Organization
 
