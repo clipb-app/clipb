@@ -13,6 +13,7 @@ export function QuickCopyWindow() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const loadClips = useCallback(async () => {
     const rows = await getRecentClips({
@@ -46,6 +47,17 @@ export function QuickCopyWindow() {
   const activeClip = useMemo(() => {
     return clips[activeIndex] ?? null;
   }, [clips, activeIndex]);
+
+  useEffect(() => {
+    const activeItem = itemRefs.current[activeIndex];
+
+    if (!activeItem) return;
+
+    activeItem.scrollIntoView({
+      block: "nearest",
+      behavior: "auto",
+    });
+  }, [activeIndex]);
 
   const copyClip = useCallback(async (clip: Clip) => {
     await writeText(clip.content);
@@ -154,6 +166,9 @@ export function QuickCopyWindow() {
             return (
               <button
                 key={clip.id}
+                ref={(element) => {
+                  itemRefs.current[index] = element;
+                }}
                 className={["quick-item", isActive ? "active" : ""].join(" ")}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => copyClip(clip)}
