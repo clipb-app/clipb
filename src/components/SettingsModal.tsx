@@ -1,4 +1,14 @@
-import { Download, Palette, Trash2, Upload, X, MonitorUp } from "lucide-react";
+import { useState } from "react";
+import {
+  Download,
+  MonitorUp,
+  Palette,
+  ShieldCheck,
+  TimerReset,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import type { AppSettings, RetentionDays, ThemeMode } from "../types";
 
 interface SettingsModalProps {
@@ -21,6 +31,24 @@ const retentionOptions: Array<{
   { label: "After 90 days", value: "90" },
   { label: "After 180 days", value: "180" },
   { label: "After 365 days", value: "365" },
+];
+
+const minClipLengthOptions = [1, 2, 3, 5, 10];
+
+const maxClipLengthOptions = [
+  { label: "1,000 characters", value: 1000 },
+  { label: "5,000 characters", value: 5000 },
+  { label: "10,000 characters", value: 10000 },
+  { label: "50,000 characters", value: 50000 },
+  { label: "100,000 characters", value: 100000 },
+  { label: "Unlimited", value: 0 },
+];
+
+const pauseOptions = [
+  { label: "5 min", milliseconds: 5 * 60 * 1000 },
+  { label: "15 min", milliseconds: 15 * 60 * 1000 },
+  { label: "30 min", milliseconds: 30 * 60 * 1000 },
+  { label: "1 hour", milliseconds: 60 * 60 * 1000 },
 ];
 
 const themeOptions: Array<{
@@ -54,6 +82,52 @@ export function SettingsModal({
   onImport,
   onClearAll,
 }: SettingsModalProps) {
+  const [ignoredAppInput, setIgnoredAppInput] = useState("");
+
+  function addIgnoredApp() {
+    const appName = ignoredAppInput.trim();
+
+    if (!appName) return;
+
+    const alreadyExists = settings.ignoredApps.some(
+      (item) => item.toLowerCase() === appName.toLowerCase(),
+    );
+
+    if (alreadyExists) {
+      setIgnoredAppInput("");
+      return;
+    }
+
+    updateSetting({
+      ...settings,
+      ignoredApps: [...settings.ignoredApps, appName],
+    });
+
+    setIgnoredAppInput("");
+  }
+
+  function removeIgnoredApp(appName: string) {
+    updateSetting({
+      ...settings,
+      ignoredApps: settings.ignoredApps.filter((item) => item !== appName),
+    });
+  }
+
+  function pauseFor(milliseconds: number) {
+    updateSetting({
+      ...settings,
+      pauseUntil: Date.now() + milliseconds,
+      privateMode: false,
+    });
+  }
+
+  function clearTemporaryPause() {
+    updateSetting({
+      ...settings,
+      pauseUntil: null,
+    });
+  }
+
   if (!open) return null;
 
   async function updateSetting(nextSettings: AppSettings) {
@@ -172,6 +246,255 @@ export function SettingsModal({
                 }
               />
             </label>
+          </section>
+
+          <section className="settings-section settings-section--featured">
+            <div className="section-title-row">
+              <div>
+                <h3>Privacy & Filtering</h3>
+                <p>Control what ClipB is allowed to save.</p>
+              </div>
+
+              <div className="section-icon">
+                <ShieldCheck size={18} />
+              </div>
+            </div>
+
+            <div className="settings-stack">
+              <label className="setting-row">
+                <div>
+                  <strong>Ignore likely API keys and tokens</strong>
+                  <span>
+                    Skips copied text that looks like keys, JWTs, private keys,
+                    or credentials.
+                  </span>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={settings.ignoreLikelyApiKeys}
+                  title="Ignore likely API keys and tokens"
+                  aria-label="Ignore likely API keys and tokens"
+                  onChange={(event) =>
+                    updateSetting({
+                      ...settings,
+                      ignoreLikelyApiKeys: event.target.checked,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="setting-row">
+                <div>
+                  <strong>Ignore likely passwords</strong>
+                  <span>
+                    Skips short random-looking text that may be a password.
+                  </span>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={settings.ignoreLikelyPasswords}
+                  title="Ignore likely passwords"
+                  aria-label="Ignore likely passwords"
+                  onChange={(event) =>
+                    updateSetting({
+                      ...settings,
+                      ignoreLikelyPasswords: event.target.checked,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="setting-row">
+                <div>
+                  <strong>Ignore sensitive clips</strong>
+                  <span>
+                    Applies the sensitive-content scanner before saving new
+                    clips.
+                  </span>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={settings.ignoreSensitiveClips}
+                  title="Ignore sensitive clips"
+                  aria-label="Ignore sensitive clips"
+                  onChange={(event) =>
+                    updateSetting({
+                      ...settings,
+                      ignoreSensitiveClips: event.target.checked,
+                    })
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="settings-inline-grid">
+              <label className="field-label">
+                Minimum clip length
+                <span className="select-control">
+                  <select
+                    value={settings.minClipLength}
+                    title="Choose the minimum number of characters before a clip is saved"
+                    aria-label="Minimum clip length"
+                    onChange={(event) =>
+                      updateSetting({
+                        ...settings,
+                        minClipLength: Number(event.target.value),
+                      })
+                    }
+                  >
+                    {minClipLengthOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {value} character{value === 1 ? "" : "s"}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+
+              <label className="field-label">
+                Maximum clip length
+                <span className="select-control">
+                  <select
+                    value={settings.maxClipLength}
+                    title="Choose the maximum number of characters ClipB can save"
+                    aria-label="Maximum clip length"
+                    onChange={(event) =>
+                      updateSetting({
+                        ...settings,
+                        maxClipLength: Number(event.target.value),
+                      })
+                    }
+                  >
+                    {maxClipLengthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+            </div>
+
+            <div className="settings-note">
+              Privacy filters run locally on your device before ClipB saves a
+              copied item.
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-title-row">
+              <div>
+                <h3>Private Mode & Pause Timer</h3>
+                <p>Temporarily stop ClipB from saving copied text.</p>
+              </div>
+
+              <div className="section-icon">
+                <TimerReset size={18} />
+              </div>
+            </div>
+
+            <label className="setting-row">
+              <div>
+                <strong>Private mode</strong>
+                <span>
+                  Do not save new clips until private mode is turned off.
+                </span>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={settings.privateMode}
+                title="Enable private mode"
+                aria-label="Enable private mode"
+                onChange={(event) =>
+                  updateSetting({
+                    ...settings,
+                    privateMode: event.target.checked,
+                    pauseUntil: event.target.checked
+                      ? null
+                      : settings.pauseUntil,
+                  })
+                }
+              />
+            </label>
+
+            <div className="pause-actions">
+              {pauseOptions.map((option) => (
+                <button
+                  key={option.label}
+                  className="pause-button"
+                  onClick={() => pauseFor(option.milliseconds)}
+                  title={`Pause clipboard watching for ${option.label}`}
+                  aria-label={`Pause clipboard watching for ${option.label}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+
+              <button
+                className="pause-button"
+                onClick={clearTemporaryPause}
+                title="Clear temporary pause"
+                aria-label="Clear temporary pause"
+              >
+                Clear pause
+              </button>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>Ignored apps</h3>
+            <p>
+              Store app names you do not want ClipB to track. Active app
+              detection will be wired in a future update.
+            </p>
+
+            <div className="ignored-app-form">
+              <input
+                value={ignoredAppInput}
+                onChange={(event) => setIgnoredAppInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addIgnoredApp();
+                  }
+                }}
+                placeholder="Example: 1Password, Bitwarden"
+                title="Ignored app name"
+                aria-label="Ignored app name"
+              />
+
+              <button
+                className="settings-action-button"
+                onClick={addIgnoredApp}
+                title="Add ignored app"
+                aria-label="Add ignored app"
+              >
+                Add
+              </button>
+            </div>
+
+            {settings.ignoredApps.length > 0 ? (
+              <div className="ignored-app-list">
+                {settings.ignoredApps.map((appName) => (
+                  <button
+                    key={appName}
+                    className="ignored-app-pill"
+                    onClick={() => removeIgnoredApp(appName)}
+                    title={`Remove ${appName} from ignored apps`}
+                    aria-label={`Remove ${appName} from ignored apps`}
+                  >
+                    {appName}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="settings-note">No ignored apps added yet.</div>
+            )}
           </section>
 
           <section className="settings-section">

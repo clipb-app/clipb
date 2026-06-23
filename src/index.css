@@ -1193,3 +1193,99 @@ button:active {
   padding: 5px 9px;
   font-size: 11px;
 }
+
+.status-line--private {
+  color: #8b5cf6;
+}
+
+.settings-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pause-button {
+  min-height: 36px;
+  border-radius: 999px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  background: var(--panel-solid);
+}
+
+.pause-button:hover {
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+}
+
+.ignored-app-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.ignored-app-form input {
+  min-width: 0;
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--panel-solid);
+  outline: none;
+}
+
+.ignored-app-form input:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px var(--brand-soft);
+}
+
+.ignored-app-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ignored-app-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  background: var(--panel-solid);
+  font-size: 12px;
+}
+
+.ignored-app-pill:hover {
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+}
+
+.ignored-app-pill span {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+@media (max-width: 560px) {
+  .settings-inline-grid,
+  .ignored-app-form {
+    grid-template-columns: 1fr;
+  }
+}

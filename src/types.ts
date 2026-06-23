@@ -25,6 +25,15 @@ export interface AppSettings {
   watchClipboard: boolean;
   themeMode: ThemeMode;
   launchOnStartup: boolean;
+
+  minClipLength: number;
+  maxClipLength: number;
+  ignoreSensitiveClips: boolean;
+  ignoreLikelyPasswords: boolean;
+  ignoreLikelyApiKeys: boolean;
+  privateMode: boolean;
+  pauseUntil: number | null;
+  ignoredApps: string[];
 }
 
 export interface ExportedClip {

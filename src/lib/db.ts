@@ -21,7 +21,76 @@ const DEFAULT_SETTINGS: AppSettings = {
   watchClipboard: true,
   themeMode: "system",
   launchOnStartup: false,
+
+  minClipLength: 2,
+  maxClipLength: 50000,
+  ignoreSensitiveClips: true,
+  ignoreLikelyPasswords: true,
+  ignoreLikelyApiKeys: true,
+  privateMode: false,
+  pauseUntil: null,
+  ignoredApps: [],
 };
+
+function getBooleanSetting(
+  map: Map<string, string>,
+  key: string,
+  fallback: boolean,
+): boolean {
+  const value = map.get(key);
+
+  if (value === undefined) return fallback;
+
+  return value === "true";
+}
+
+function getNumberSetting(
+  map: Map<string, string>,
+  key: string,
+  fallback: number,
+): number {
+  const value = map.get(key);
+
+  if (value === undefined) return fallback;
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getNullableNumberSetting(
+  map: Map<string, string>,
+  key: string,
+  fallback: number | null,
+): number | null {
+  const value = map.get(key);
+
+  if (value === undefined || value === "null") return fallback;
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getStringArraySetting(
+  map: Map<string, string>,
+  key: string,
+  fallback: string[],
+): string[] {
+  const value = map.get(key);
+
+  if (!value) return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (!Array.isArray(parsed)) return fallback;
+
+    return parsed.filter((item) => typeof item === "string");
+  } catch {
+    return fallback;
+  }
+}
 
 async function initDb(db: Db) {
   await db.execute(`
@@ -88,6 +157,70 @@ async function initDb(db: Db) {
     VALUES (?, ?);
   `,
     ["launch_on_startup", String(DEFAULT_SETTINGS.launchOnStartup)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["min_clip_length", String(DEFAULT_SETTINGS.minClipLength)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["max_clip_length", String(DEFAULT_SETTINGS.maxClipLength)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_sensitive_clips", String(DEFAULT_SETTINGS.ignoreSensitiveClips)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_likely_passwords", String(DEFAULT_SETTINGS.ignoreLikelyPasswords)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_likely_api_keys", String(DEFAULT_SETTINGS.ignoreLikelyApiKeys)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["private_mode", String(DEFAULT_SETTINGS.privateMode)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["pause_until", "null"],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignored_apps", JSON.stringify(DEFAULT_SETTINGS.ignoredApps)],
   );
 }
 
@@ -216,7 +349,7 @@ export async function getRecentClips(options?: {
         ORDER BY is_pinned DESC, created_at DESC
         LIMIT ?;
       `,
-      [`%${query}%`, limit]
+      [`%${query}%`, limit],
     );
   }
 
@@ -228,7 +361,7 @@ export async function getRecentClips(options?: {
       ORDER BY is_pinned DESC, created_at DESC
       LIMIT ?;
     `,
-    [limit]
+    [limit],
   );
 }
 
@@ -346,18 +479,72 @@ export async function getAppSettings(): Promise<AppSettings> {
   return {
     historyRetentionDays,
     themeMode,
-    protectPinnedClips:
-      map.get("protect_pinned_clips") === undefined
-        ? DEFAULT_SETTINGS.protectPinnedClips
-        : map.get("protect_pinned_clips") === "true",
-    watchClipboard:
-      map.get("watch_clipboard") === undefined
-        ? DEFAULT_SETTINGS.watchClipboard
-        : map.get("watch_clipboard") === "true",
-    launchOnStartup:
-      map.get("launch_on_startup") === undefined
-        ? DEFAULT_SETTINGS.launchOnStartup
-        : map.get("launch_on_startup") === "true",
+
+    protectPinnedClips: getBooleanSetting(
+      map,
+      "protect_pinned_clips",
+      DEFAULT_SETTINGS.protectPinnedClips,
+    ),
+
+    watchClipboard: getBooleanSetting(
+      map,
+      "watch_clipboard",
+      DEFAULT_SETTINGS.watchClipboard,
+    ),
+
+    launchOnStartup: getBooleanSetting(
+      map,
+      "launch_on_startup",
+      DEFAULT_SETTINGS.launchOnStartup,
+    ),
+
+    minClipLength: getNumberSetting(
+      map,
+      "min_clip_length",
+      DEFAULT_SETTINGS.minClipLength,
+    ),
+
+    maxClipLength: getNumberSetting(
+      map,
+      "max_clip_length",
+      DEFAULT_SETTINGS.maxClipLength,
+    ),
+
+    ignoreSensitiveClips: getBooleanSetting(
+      map,
+      "ignore_sensitive_clips",
+      DEFAULT_SETTINGS.ignoreSensitiveClips,
+    ),
+
+    ignoreLikelyPasswords: getBooleanSetting(
+      map,
+      "ignore_likely_passwords",
+      DEFAULT_SETTINGS.ignoreLikelyPasswords,
+    ),
+
+    ignoreLikelyApiKeys: getBooleanSetting(
+      map,
+      "ignore_likely_api_keys",
+      DEFAULT_SETTINGS.ignoreLikelyApiKeys,
+    ),
+
+    privateMode: getBooleanSetting(
+      map,
+      "private_mode",
+      DEFAULT_SETTINGS.privateMode,
+    ),
+
+    pauseUntil: getNullableNumberSetting(
+      map,
+      "pause_until",
+      DEFAULT_SETTINGS.pauseUntil,
+    ),
+
+    ignoredApps: getStringArraySetting(
+      map,
+      "ignored_apps",
+      DEFAULT_SETTINGS.ignoredApps,
+    ),
   };
 }
 
@@ -402,6 +589,73 @@ export async function updateAppSettings(settings: AppSettings): Promise<void> {
     VALUES (?, ?);
   `,
     ["launch_on_startup", String(settings.launchOnStartup)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["min_clip_length", String(settings.minClipLength)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["max_clip_length", String(settings.maxClipLength)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_sensitive_clips", String(settings.ignoreSensitiveClips)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_likely_passwords", String(settings.ignoreLikelyPasswords)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignore_likely_api_keys", String(settings.ignoreLikelyApiKeys)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["private_mode", String(settings.privateMode)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    [
+      "pause_until",
+      settings.pauseUntil === null ? "null" : String(settings.pauseUntil),
+    ],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["ignored_apps", JSON.stringify(settings.ignoredApps)],
   );
 }
 

@@ -54,7 +54,62 @@ const DEFAULT_SETTINGS: AppSettings = {
   watchClipboard: true,
   themeMode: "system",
   launchOnStartup: false,
+
+  minClipLength: 2,
+  maxClipLength: 50000,
+  ignoreSensitiveClips: true,
+  ignoreLikelyPasswords: true,
+  ignoreLikelyApiKeys: true,
+  privateMode: false,
+  pauseUntil: null,
+  ignoredApps: [],
 };
+
+function formatPauseRemaining(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function getClipboardStatus(settings: AppSettings, currentTime: number) {
+  if (settings.privateMode) {
+    return {
+      text: "Private mode active",
+      variant: "private",
+      active: false,
+    };
+  }
+
+  if (settings.pauseUntil && settings.pauseUntil > currentTime) {
+    return {
+      text: `Paused — resumes in ${formatPauseRemaining(
+        settings.pauseUntil - currentTime,
+      )}`,
+      variant: "paused",
+      active: false,
+    };
+  }
+
+  if (!settings.watchClipboard) {
+    return {
+      text: "Clipboard watching paused",
+      variant: "paused",
+      active: false,
+    };
+  }
+
+  return {
+    text: "Watching clipboard",
+    variant: "active",
+    active: true,
+  };
+}
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -66,6 +121,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const loadClips = useCallback(async () => {
     setLoading(true);
@@ -96,7 +152,7 @@ export default function App() {
   }, [loadClips, loadDailyCounts]);
 
   const { error: watcherError } = useClipboardWatcher({
-    enabled: settings.watchClipboard,
+    settings,
     intervalMs: 1000,
     onSaved: () => {
       refreshData();
@@ -104,8 +160,33 @@ export default function App() {
   });
 
   useEffect(() => {
+    if (!settings.pauseUntil) return;
+
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [settings.pauseUntil]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = settings.themeMode;
   }, [settings.themeMode]);
+
+  useEffect(() => {
+    if (!settings.pauseUntil) return;
+    if (settings.pauseUntil > currentTime) return;
+
+    const nextSettings = {
+      ...settings,
+      pauseUntil: null,
+    };
+
+    setSettings(nextSettings);
+    updateAppSettings(nextSettings).catch(console.error);
+  }, [settings, currentTime]);
 
   useEffect(() => {
     async function boot() {
@@ -254,6 +335,8 @@ export default function App() {
     });
   }
 
+  const clipboardStatus = getClipboardStatus(settings, currentTime);
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -272,24 +355,25 @@ export default function App() {
             <div
               className={[
                 "status-line",
-                settings.watchClipboard ? "" : "status-line--paused",
+                clipboardStatus.variant === "paused"
+                  ? "status-line--paused"
+                  : "",
+                clipboardStatus.variant === "private"
+                  ? "status-line--private"
+                  : "",
               ].join(" ")}
             >
               <span
                 className={[
                   "status-dot",
-                  settings.watchClipboard
+                  clipboardStatus.active
                     ? "status-dot--active"
                     : "status-dot--paused",
                 ].join(" ")}
                 aria-hidden="true"
               />
 
-              <span>
-                {settings.watchClipboard
-                  ? "Watching clipboard"
-                  : "Clipboard watching paused"}
-              </span>
+              <span>{clipboardStatus.text}</span>
             </div>
 
             <h2>{formatViewTitle(selectedDate, viewMode)}</h2>
