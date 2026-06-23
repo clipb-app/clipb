@@ -321,13 +321,13 @@ Thumbs.db
 
 ### v0.3 — Desktop Utility Upgrade
 
-- [ ] Add system tray icon
-- [ ] Keep app running in background
-- [ ] Add global shortcut to open ClipB
-- [ ] Add launch on startup option
-- [ ] Add minimize to tray
-- [ ] Add quick-copy popup window
-- [ ] Add keyboard navigation
+- [x] Add system tray icon
+- [x] Keep app running in background
+- [x] Add global shortcut to open ClipB
+- [x] Add launch on startup option
+- [x] Add minimize to tray
+- [x] Add quick-copy popup window
+- [x] Add keyboard navigation
 
 ### v0.4 — Privacy and Filtering
 
