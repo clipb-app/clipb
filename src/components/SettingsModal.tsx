@@ -157,7 +157,7 @@ export function SettingsModal({
             <h3>History retention</h3>
             <p>Choose how long ClipB keeps old clips.</p>
 
-            <label className="field-label">
+            <label className="field-label select-field">
               Auto-delete clips
               <select
                 value={settings.historyRetentionDays}

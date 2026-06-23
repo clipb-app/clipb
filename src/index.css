@@ -408,6 +408,48 @@ button:active {
   color: var(--warning);
 }
 
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: currentColor;
+}
+
+.status-dot--active {
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+.status-dot--paused {
+  opacity: 0.75;
+}
+
+@keyframes status-pulse {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 38%, transparent);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+    box-shadow: 0 0 0 7px color-mix(in srgb, currentColor 0%, transparent);
+  }
+
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 38%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot--active {
+    animation: none;
+  }
+}
+
 .topbar__actions {
   flex: 0 0 auto;
   display: flex;
@@ -634,8 +676,7 @@ button:active {
 
 .settings-section--featured {
   background:
-    linear-gradient(180deg, var(--brand-soft), transparent),
-    var(--panel-raised);
+    linear-gradient(180deg, var(--brand-soft), transparent), var(--panel-raised);
 }
 
 .section-title-row {
@@ -763,15 +804,15 @@ button:active {
   margin-bottom: 16px;
 }
 
-.field-label {
+.select-field {
   position: relative;
 }
 
-.field-label::after {
+.select-field::after {
   content: "⌄";
   position: absolute;
   right: 14px;
-  bottom: 26px;
+  bottom: 28px;
   color: var(--muted);
   pointer-events: none;
   font-size: 16px;
@@ -780,7 +821,7 @@ button:active {
 
 .field-label select {
   width: 100%;
-  min-height: 42px;
+  min-height: 48px;
   border-radius: 14px;
   padding: 12px 42px 12px 14px;
   border: 1px solid var(--border);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Circle, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 
@@ -250,7 +250,16 @@ export default function App() {
                 settings.watchClipboard ? "" : "status-line--paused",
               ].join(" ")}
             >
-              <Circle size={10} fill="currentColor" />
+              <span
+                className={[
+                  "status-dot",
+                  settings.watchClipboard
+                    ? "status-dot--active"
+                    : "status-dot--paused",
+                ].join(" ")}
+                aria-hidden="true"
+              />
+
               <span>
                 {settings.watchClipboard
                   ? "Watching clipboard"
