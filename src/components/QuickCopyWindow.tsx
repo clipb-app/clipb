@@ -30,13 +30,24 @@ export function QuickCopyWindow() {
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+
+    function handleWindowFocus() {
+      inputRef.current?.focus();
+      loadClips().catch(console.error);
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [loadClips]);
 
   const activeClip = useMemo(() => {
     return clips[activeIndex] ?? null;
   }, [clips, activeIndex]);
 
-  async function copyClip(clip: Clip) {
+  const copyClip = useCallback(async (clip: Clip) => {
     await writeText(clip.content);
 
     setCopiedId(clip.id);
@@ -44,47 +55,58 @@ export function QuickCopyWindow() {
     window.setTimeout(() => {
       hideQuickWindow();
     }, 140);
-  }
+  }, []);
 
-  function moveSelection(direction: "up" | "down") {
-    if (clips.length === 0) return;
+  const moveSelection = useCallback(
+    (direction: "up" | "down") => {
+      if (clips.length === 0) return;
 
-    setActiveIndex((current) => {
-      if (direction === "down") {
-        return current >= clips.length - 1 ? 0 : current + 1;
+      setActiveIndex((current) => {
+        if (direction === "down") {
+          return current >= clips.length - 1 ? 0 : current + 1;
+        }
+
+        return current <= 0 ? clips.length - 1 : current - 1;
+      });
+    },
+    [clips.length],
+  );
+
+  useEffect(() => {
+    async function handleWindowKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        await hideQuickWindow();
+        return;
       }
 
-      return current <= 0 ? clips.length - 1 : current - 1;
-    });
-  }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        moveSelection("down");
+        return;
+      }
 
-  async function handleKeyDown(event: React.KeyboardEvent) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      await hideQuickWindow();
-      return;
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        moveSelection("up");
+        return;
+      }
+
+      if (event.key === "Enter" && activeClip) {
+        event.preventDefault();
+        await copyClip(activeClip);
+      }
     }
 
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      moveSelection("down");
-      return;
-    }
+    window.addEventListener("keydown", handleWindowKeyDown);
 
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveSelection("up");
-      return;
-    }
-
-    if (event.key === "Enter" && activeClip) {
-      event.preventDefault();
-      await copyClip(activeClip);
-    }
-  }
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [activeClip, copyClip, moveSelection]);
 
   return (
-    <main className="quick-window" onKeyDown={handleKeyDown}>
+    <main className="quick-window">
       <header className="quick-header">
         <div>
           <h1>Quick Copy</h1>
@@ -158,6 +180,7 @@ export function QuickCopyWindow() {
         <span>↑↓ Navigate</span>
         <span>Enter Copy</span>
         <span>Esc Close</span>
+        <span>⌥ Shift Q Toggle</span>
       </footer>
     </main>
   );

@@ -28,7 +28,6 @@ import {
 import { useClipboardWatcher } from "./hooks/useClipboardWatcher";
 import { exportClipsToJsonFile, importClipsFromJsonFile } from "./lib/backup";
 
-import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import {
   getLaunchOnStartupEnabled,
   setLaunchOnStartup,
@@ -67,8 +66,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-
-  useGlobalShortcuts();
 
   const loadClips = useCallback(async () => {
     setLoading(true);

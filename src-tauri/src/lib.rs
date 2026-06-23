@@ -4,6 +4,9 @@ use tauri::{
     Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 
+#[cfg(desktop)]
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
 fn show_window(window: &WebviewWindow) -> Result<(), String> {
     window.show().map_err(|error| error.to_string())?;
     window.unminimize().map_err(|error| error.to_string())?;
@@ -98,9 +101,60 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+#[cfg(target_os = "macos")]
+fn open_main_modifiers() -> Modifiers {
+    Modifiers::SUPER | Modifiers::SHIFT
+}
+
+#[cfg(not(target_os = "macos"))]
+fn open_main_modifiers() -> Modifiers {
+    Modifiers::CONTROL | Modifiers::SHIFT
+}
+
+fn quick_copy_modifiers() -> Modifiers {
+    Modifiers::ALT | Modifiers::SHIFT
+}
+
+#[cfg(desktop)]
+fn setup_global_shortcuts(app: &tauri::App) -> tauri::Result<()> {
+    let open_main_shortcut = Shortcut::new(Some(open_main_modifiers()), Code::KeyB);
+    let quick_copy_shortcut = Shortcut::new(Some(quick_copy_modifiers()), Code::KeyQ);
+
+    let open_main_for_handler = open_main_shortcut.clone();
+    let quick_copy_for_handler = quick_copy_shortcut.clone();
+
+    app.handle().plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(move |app, shortcut, event| {
+                if event.state() != ShortcutState::Pressed {
+                    return;
+                }
+
+                if shortcut == &open_main_for_handler {
+                    let _ = show_main(app);
+                }
+
+                if shortcut == &quick_copy_for_handler {
+                    let _ = toggle_quick(app);
+                }
+            })
+            .build(),
+    )?;
+
+    if let Err(error) = app.global_shortcut().register(open_main_shortcut) {
+        eprintln!("Could not register ClipB open shortcut: {error}");
+    }
+
+    if let Err(error) = app.global_shortcut().register(quick_copy_shortcut) {
+        eprintln!("Could not register ClipB quick-copy shortcut: {error}");
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
@@ -113,9 +167,8 @@ pub fn run() {
             quit_app
         ])
         .setup(|app| {
-            app.handle().plugin(
-                tauri_plugin_global_shortcut::Builder::new().build(),
-            )?;
+            #[cfg(desktop)]
+            setup_global_shortcuts(app)?;
 
             app.handle().plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -123,8 +176,7 @@ pub fn run() {
             ))?;
 
             let open_item = MenuItem::with_id(app, "open", "Open ClipB", true, None::<&str>)?;
-            let quick_item =
-                MenuItem::with_id(app, "quick", "Quick Copy", true, None::<&str>)?;
+            let quick_item = MenuItem::with_id(app, "quick", "Quick Copy", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit ClipB", true, None::<&str>)?;
 
             let menu = Menu::with_items(app, &[&open_item, &quick_item, &quit_item])?;
@@ -176,6 +228,13 @@ pub fn run() {
             }
             _ => {}
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| match event {
+        tauri::RunEvent::Reopen { .. } => {
+            let _ = show_main(app_handle);
+        }
+        _ => {}
+    });
 }
