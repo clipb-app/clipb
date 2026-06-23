@@ -69,7 +69,11 @@ export function SettingsModal({
             <p>Backup, privacy, appearance, and local history controls.</p>
           </div>
 
-          <button title="Close settings" className="modal-close-button" onClick={onClose}>
+          <button
+            title="Close settings"
+            className="modal-close-button"
+            onClick={onClose}
+          >
             <X size={18} />
           </button>
         </header>
@@ -157,6 +161,8 @@ export function SettingsModal({
               Auto-delete clips
               <select
                 value={settings.historyRetentionDays}
+                title="Choose how long ClipB keeps old clips before auto-deleting them"
+                aria-label="Auto-delete clips retention period"
                 onChange={(event) =>
                   updateSetting({
                     ...settings,

@@ -763,15 +763,36 @@ button:active {
   margin-bottom: 16px;
 }
 
+.field-label {
+  position: relative;
+}
+
+.field-label::after {
+  content: "⌄";
+  position: absolute;
+  right: 14px;
+  bottom: 26px;
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 16px;
+  line-height: 0;
+}
+
 .field-label select {
   width: 100%;
   min-height: 42px;
   border-radius: 14px;
-  padding: 0 12px;
+  padding: 12px 42px 12px 14px;
   border: 1px solid var(--border);
   color: var(--text);
   background: var(--panel-solid);
   outline: none;
+
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  line-height: 1.4;
 }
 
 .field-label select:focus {
