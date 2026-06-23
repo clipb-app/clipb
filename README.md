@@ -331,13 +331,15 @@ Thumbs.db
 
 ### v0.4 — Privacy and Filtering
 
-- [ ] Add sensitive text detection
-- [ ] Ignore likely passwords
-- [ ] Ignore likely API keys/tokens
-- [ ] Add ignored apps list
+- [x] Add sensitive text detection
+- [x] Ignore likely passwords
+- [x] Ignore likely API keys/tokens
+- [x] Add ignored apps list
+- [x] Add active app detection for ignored apps
+- [x] Block clips copied from ignored apps
 - [x] Add minimum clip length setting
 - [x] Add maximum clip length setting
-- [ ] Add private mode
+- [x] Add private mode
 - [x] Add temporary pause timer
 
 ### v0.5 — Better Organization

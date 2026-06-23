@@ -4,6 +4,8 @@ use tauri::{
     Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 
+use serde::Serialize;
+
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
@@ -71,6 +73,27 @@ fn toggle_quick(app: &tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     show_main(&app)
+}
+
+#[derive(Debug, Serialize)]
+struct ActiveAppInfo {
+    app_name: String,
+    title: String,
+    process_path: String,
+    process_id: u64,
+}
+
+#[tauri::command]
+fn get_active_app() -> Result<ActiveAppInfo, String> {
+    let active_window = active_win_pos_rs::get_active_window()
+        .map_err(|_| "Could not get active app".to_string())?;
+
+    Ok(ActiveAppInfo {
+        app_name: active_window.app_name,
+        title: active_window.title,
+        process_path: active_window.process_path.to_string_lossy().into_owned(),
+        process_id: active_window.process_id,
+    })
 }
 
 #[tauri::command]
@@ -164,7 +187,8 @@ pub fn run() {
             hide_main_window,
             toggle_quick_window,
             hide_quick_window,
-            quit_app
+            quit_app,
+            get_active_app
         ])
         .setup(|app| {
             #[cfg(desktop)]

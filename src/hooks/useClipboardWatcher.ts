@@ -3,6 +3,7 @@ import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import type { AppSettings } from "../types";
 import { saveClip } from "../lib/db";
 import { scanClipPrivacy } from "../lib/privacy";
+import { getActiveApp, isIgnoredApp } from "../lib/activeApp";
 
 interface UseClipboardWatcherOptions {
   settings: AppSettings;
@@ -44,6 +45,18 @@ export function useClipboardWatcher({
         if (cleanText === lastSeenRef.current) return;
 
         lastSeenRef.current = cleanText;
+
+        const activeApp = await getActiveApp();
+        console.log("Active app:", activeApp);
+
+        if (isIgnoredApp(activeApp, settings.ignoredApps)) {
+          onSkipped?.(
+            activeApp?.app_name
+              ? `ignored_app:${activeApp.app_name}`
+              : "ignored_app",
+          );
+          return;
+        }
 
         const privacyScan = scanClipPrivacy(cleanText, settings);
 
