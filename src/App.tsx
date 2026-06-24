@@ -54,6 +54,7 @@ import {
   moveDate,
   toDayKey,
 } from "./lib/dates";
+import { exportClipBArchive, importClipBArchive } from "./lib/clipbArchive";
 
 function groupClipsByDay(clips: Clip[]) {
   return clips.reduce<Record<string, Clip[]>>((groups, clip) => {
@@ -559,6 +560,57 @@ export default function App() {
     }
   }
 
+  async function handleExportClipBArchive() {
+    try {
+      const result = await exportClipBArchive();
+
+      if (result.cancelled) return;
+
+      await message(
+        `Exported ${result.exported} clips and ${result.assets} assets successfully.`,
+        {
+          title: "ClipB archive export complete",
+          kind: "info",
+        },
+      );
+    } catch (error) {
+      console.error(error);
+
+      await message("Could not export ClipB archive. Please try again.", {
+        title: "Archive export failed",
+        kind: "error",
+      });
+    }
+  }
+
+  async function handleImportClipBArchive() {
+    try {
+      const result = await importClipBArchive();
+
+      if (result.cancelled) return;
+
+      await refreshData();
+
+      await message(
+        `Imported ${result.imported} clips. Skipped ${result.skipped} duplicates. Restored ${result.tags} tags.`,
+        {
+          title: "ClipB archive import complete",
+          kind: "info",
+        },
+      );
+    } catch (error) {
+      console.error(error);
+
+      await message(
+        "Could not import this .clipb file. Make sure it is a valid ClipB archive.",
+        {
+          title: "Archive import failed",
+          kind: "error",
+        },
+      );
+    }
+  }
+
   async function handleClearAll() {
     const confirmed = await confirm(
       "This will permanently delete all saved clips from ClipB. This action cannot be undone.",
@@ -832,6 +884,8 @@ export default function App() {
         onSaveSettings={handleSaveSettings}
         onExport={handleExport}
         onImport={handleImport}
+        onExportArchive={handleExportClipBArchive}
+        onImportArchive={handleImportClipBArchive}
         onClearAll={handleClearAll}
       />
 

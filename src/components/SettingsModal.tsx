@@ -18,6 +18,8 @@ interface SettingsModalProps {
   onSaveSettings: (settings: AppSettings) => Promise<void>;
   onExport: () => Promise<void>;
   onImport: () => Promise<void>;
+  onExportArchive: () => void;
+  onImportArchive: () => void;
   onClearAll: () => Promise<void>;
 }
 
@@ -80,6 +82,8 @@ export function SettingsModal({
   onSaveSettings,
   onExport,
   onImport,
+  onExportArchive,
+  onImportArchive,
   onClearAll,
 }: SettingsModalProps) {
   const [ignoredAppInput, setIgnoredAppInput] = useState("");
@@ -527,16 +531,49 @@ export function SettingsModal({
 
           <section className="settings-section">
             <h3>Backup</h3>
-            <p>Export or import your text clipboard history as JSON.</p>
+            <p>
+              Export or import your ClipB history. JSON is text-only; .clipb
+              includes rich clips, tags, images, and backed-up file assets.
+            </p>
 
             <div className="settings-actions-grid">
-              <button className="settings-action-button" onClick={onExport}>
-                <Download size={17} />
+              <button
+                className="settings-action-button"
+                onClick={onExportArchive}
+                title="Export ClipB archive"
+                aria-label="Export ClipB archive"
+              >
+                <Download size={17} aria-hidden="true" />
+                Export .clipb
+              </button>
+
+              <button
+                className="settings-action-button"
+                onClick={onImportArchive}
+                title="Import ClipB archive"
+                aria-label="Import ClipB archive"
+              >
+                <Upload size={17} aria-hidden="true" />
+                Import .clipb
+              </button>
+
+              <button
+                className="settings-action-button"
+                onClick={onExport}
+                title="Export JSON backup"
+                aria-label="Export JSON backup"
+              >
+                <Download size={17} aria-hidden="true" />
                 Export JSON
               </button>
 
-              <button className="settings-action-button" onClick={onImport}>
-                <Upload size={17} />
+              <button
+                className="settings-action-button"
+                onClick={onImport}
+                title="Import JSON backup"
+                aria-label="Import JSON backup"
+              >
+                <Upload size={17} aria-hidden="true" />
                 Import JSON
               </button>
             </div>

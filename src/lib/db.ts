@@ -9,6 +9,9 @@ import type {
   ExportedClip,
   RetentionDays,
   ThemeMode,
+  ClipBArchiveClip,
+  ClipBArchiveClipTag,
+  ClipBArchiveTag,
 } from "../types";
 import { hashText } from "./hash";
 import { detectClipCategory } from "./clipDetection";
@@ -507,6 +510,34 @@ export async function getAllTextClips(): Promise<Clip[]> {
   );
 }
 
+export async function getAllClipsForArchive(): Promise<Clip[]> {
+  const db = await getDb();
+
+  return db.select<Clip[]>(
+    `
+      SELECT *
+      FROM clips
+      ORDER BY created_at ASC;
+    `,
+  );
+}
+
+export async function getAllClipTagsForArchive(): Promise<
+  ClipBArchiveClipTag[]
+> {
+  const db = await getDb();
+
+  return db.select<ClipBArchiveClipTag[]>(
+    `
+      SELECT
+        clip_id AS clip_old_id,
+        tag_id AS tag_old_id
+      FROM clip_tags
+      ORDER BY clip_id ASC, tag_id ASC;
+    `,
+  );
+}
+
 export async function getDailyCountsForMonth(
   date: Date,
 ): Promise<DailyCount[]> {
@@ -982,6 +1013,120 @@ export async function importClipsFromBackup(
     imported,
     skipped,
   };
+}
+
+export async function importArchiveClip(
+  clip: ClipBArchiveClip,
+  assetPath: string | null,
+): Promise<Clip | null> {
+  const db = await getDb();
+
+  const existing = await db.select<Clip[]>(
+    `
+      SELECT *
+      FROM clips
+      WHERE content_hash = ?
+        AND content_type = ?
+      LIMIT 1;
+    `,
+    [clip.content_hash, clip.content_type],
+  );
+
+  if (existing.length > 0) {
+    return null;
+  }
+
+  const result = await db.execute(
+    `
+      INSERT INTO clips (
+        content,
+        content_hash,
+        content_type,
+        category,
+        note,
+        asset_path,
+        asset_name,
+        asset_size,
+        asset_mime,
+        created_at,
+        updated_at,
+        is_pinned,
+        is_favorite
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `,
+    [
+      clip.content,
+      clip.content_hash,
+      clip.content_type,
+      clip.category,
+      clip.note,
+      assetPath,
+      clip.asset_name,
+      clip.asset_size,
+      clip.asset_mime,
+      clip.created_at,
+      clip.updated_at,
+      clip.is_pinned,
+      clip.is_favorite,
+    ],
+  );
+
+  const insertedId = result.lastInsertId;
+
+  if (!insertedId) return null;
+
+  const rows = await db.select<Clip[]>(
+    `
+      SELECT *
+      FROM clips
+      WHERE id = ?;
+    `,
+    [insertedId],
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function upsertArchiveTag(
+  tag: ClipBArchiveTag,
+): Promise<Tag | null> {
+  const db = await getDb();
+
+  await db.execute(
+    `
+      INSERT OR IGNORE INTO tags (name, created_at)
+      VALUES (?, ?);
+    `,
+    [tag.name, tag.created_at],
+  );
+
+  const rows = await db.select<Tag[]>(
+    `
+      SELECT *
+      FROM tags
+      WHERE name = ?
+      LIMIT 1;
+    `,
+    [tag.name],
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function addArchiveClipTag(options: {
+  clipId: number;
+  tagId: number;
+}): Promise<void> {
+  const db = await getDb();
+
+  await db.execute(
+    `
+      INSERT OR IGNORE INTO clip_tags (clip_id, tag_id)
+      VALUES (?, ?);
+    `,
+    [options.clipId, options.tagId],
+  );
 }
 
 export async function updateClipFavorite(

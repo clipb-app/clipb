@@ -101,3 +101,44 @@ export type ClipContentType =
   | "image/gif"
   | "file/path"
   | "file/backup";
+
+export interface ClipBArchiveManifest {
+  app: "ClipB";
+  formatVersion: 1;
+  exportedAt: number;
+}
+
+export interface ClipBArchiveClip {
+  old_id: number;
+  content: string;
+  content_hash: string;
+  content_type: ClipContentType;
+  category: ClipCategory;
+  note: string | null;
+  asset_archive_path: string | null;
+  asset_name: string | null;
+  asset_size: number | null;
+  asset_mime: string | null;
+  created_at: number;
+  updated_at: number;
+  is_pinned: number;
+  is_favorite: number;
+}
+
+export interface ClipBArchiveTag {
+  old_id: number;
+  name: string;
+  created_at: number;
+}
+
+export interface ClipBArchiveClipTag {
+  clip_old_id: number;
+  tag_old_id: number;
+}
+
+export interface ClipBArchivePayload {
+  manifest: ClipBArchiveManifest;
+  clips: ClipBArchiveClip[];
+  tags: ClipBArchiveTag[];
+  clipTags: ClipBArchiveClipTag[];
+}
