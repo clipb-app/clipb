@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Settings, Clipboard } from "lucide-react";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { copyClipToClipboard } from "./lib/clipCopy";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 
 import type {
@@ -365,13 +365,22 @@ export default function App() {
   }
 
   async function handleCopy(clip: Clip) {
-    await writeText(clip.content);
+    try {
+      await copyClipToClipboard(clip);
 
-    setCopiedId(clip.id);
+      setCopiedId(clip.id);
 
-    window.setTimeout(() => {
-      setCopiedId(null);
-    }, 1200);
+      window.setTimeout(() => {
+        setCopiedId(null);
+      }, 1200);
+    } catch (error) {
+      console.error(error);
+
+      await message("Could not copy this clip back to the clipboard.", {
+        title: "Copy failed",
+        kind: "error",
+      });
+    }
   }
 
   async function handleDelete(id: number) {

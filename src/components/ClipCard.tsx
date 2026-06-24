@@ -16,6 +16,7 @@ import type { Clip, ClipTag } from "../types";
 import { ClipTags } from "./ClipTags";
 import { formatTime } from "../lib/dates";
 import { formatBytes } from "../lib/assets";
+import { getCopyLabel, getCopyTitle } from "../lib/clipCopy";
 
 interface ClipCardProps {
   clip: Clip;
@@ -142,21 +143,15 @@ export function ClipCard({
         <button
           className="icon-button"
           onClick={() => onCopy(clip)}
-          title={
-            clip.category === "image"
-              ? "Copy image filename"
-              : copied
-                ? "Copied"
-                : "Copy clip"
-          }
-          aria-label={copied ? "Copied" : "Copy clip"}
+          title={getCopyTitle(clip, copied)}
+          aria-label={getCopyTitle(clip, copied)}
         >
           {copied ? (
             <Check size={16} aria-hidden="true" />
           ) : (
             <Clipboard size={16} aria-hidden="true" />
           )}
-          {clip.category === "image" ? "Copy name" : copied ? "Copied" : "Copy"}
+          {getCopyLabel(clip, copied)}
         </button>
 
         <button

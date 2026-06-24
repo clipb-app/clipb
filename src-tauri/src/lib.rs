@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -80,6 +81,89 @@ fn toggle_quick(app: &tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     show_main(&app)
+}
+
+// -----------------------------------------------------------------------------
+// Clipboard commands
+// -----------------------------------------------------------------------------
+
+fn validate_existing_paths(paths: &[String]) -> Result<Vec<PathBuf>, String> {
+    if paths.is_empty() {
+        return Err("No file paths provided".to_string());
+    }
+
+    let mut valid_paths = Vec::new();
+
+    for path in paths {
+        let file_path = PathBuf::from(path);
+
+        if !file_path.exists() {
+            return Err(format!("File path does not exist: {}", path));
+        }
+
+        valid_paths.push(file_path);
+    }
+
+    Ok(valid_paths)
+}
+
+#[cfg(target_os = "macos")]
+fn write_file_paths_to_clipboard_macos(paths: Vec<String>) -> Result<(), String> {
+    validate_existing_paths(&paths)?;
+
+    let script = r#"
+ObjC.import('AppKit');
+ObjC.import('Foundation');
+
+function run(argv) {
+  const pasteboard = $.NSPasteboard.generalPasteboard;
+  pasteboard.clearContents;
+
+  const fileUrls = $.NSMutableArray.array;
+
+  argv.forEach((path) => {
+    const url = $.NSURL.fileURLWithPath(path);
+    fileUrls.addObject(url);
+  });
+
+  const success = pasteboard.writeObjects(fileUrls);
+
+  if (!success) {
+    throw new Error('Could not write file URLs to pasteboard');
+  }
+
+  return true;
+}
+"#;
+
+    let output = Command::new("osascript")
+        .arg("-l")
+        .arg("JavaScript")
+        .arg("-e")
+        .arg(script)
+        .args(paths)
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn write_file_paths_to_clipboard(paths: Vec<String>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        write_file_paths_to_clipboard_macos(paths)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = paths;
+        Err("Copying file references is only implemented on macOS for now.".to_string())
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -483,7 +567,8 @@ pub fn run() {
             import_image_file_to_assets,
             read_clipboard_file_paths,
             inspect_file_path,
-            backup_file_to_assets
+            backup_file_to_assets,
+            write_file_paths_to_clipboard
         ])
         .setup(|app| {
             #[cfg(desktop)]
