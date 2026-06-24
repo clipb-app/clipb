@@ -514,7 +514,7 @@ Thumbs.db
 
 ### v1.0 — Public Release
 
-- [ ] Add app icon
+- [x] Add app icon
 - [ ] Add installer builds
 - [ ] Add Windows build
 - [ ] Add macOS build
@@ -530,7 +530,7 @@ Thumbs.db
 
 ## Product Principles
 
-ClipB should stay:
+ClipB will stay:
 
 - Fast
 - Local-first
@@ -562,7 +562,7 @@ Possible future features:
 - Manage tags section in Settings
 - Cross-device encrypted backup
 
-Cloud sync should not be added until the local-first app is stable and privacy controls are strong.
+Cloud sync will not be added until the local-first app is stable and privacy controls are strong.
 
 ---
 
