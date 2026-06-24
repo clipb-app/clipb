@@ -345,13 +345,13 @@ Thumbs.db
 ### v0.5 — Better Organization
 
 - [ ] Add tags
-- [ ] Add favorite clips
-- [ ] Add clip categories
-- [ ] Add manual notes
-- [ ] Add URL detection
-- [ ] Add code snippet detection
-- [ ] Add filter by pinned clips
-- [ ] Add filter by content type
+- [x] Add favorite clips
+- [x] Add clip categories
+- [x] Add manual notes
+- [x] Add URL detection
+- [x] Add code snippet detection
+- [x] Add filter by pinned clips
+- [x] Add filter by content type
 
 ### v0.6 — Rich Clipboard Support
 

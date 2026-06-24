@@ -45,6 +45,15 @@ export function ClipCard({
 
   return (
     <article className="clip-card">
+      {clip.is_pinned ? (
+        <div
+          className="clip-pin-indicator"
+          title="Pinned clip"
+          aria-label="Pinned clip"
+        >
+          <Pin size={15} aria-hidden="true" />
+        </div>
+      ) : null}
       <div className="clip-card__meta">
         <span>{formatTime(clip.created_at)}</span>
 
@@ -52,9 +61,6 @@ export function ClipCard({
           {getCategoryIcon(clip.category)}
           {clip.category}
         </span>
-
-        {clip.is_pinned ? <span className="pill">Pinned</span> : null}
-        {clip.is_favorite ? <span className="pill">Favorite</span> : null}
       </div>
 
       <pre className="clip-card__content">{preview}</pre>

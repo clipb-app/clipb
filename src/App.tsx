@@ -298,13 +298,75 @@ export default function App() {
   }
 
   async function handleToggleFavorite(clip: Clip) {
-    await updateClipFavorite(clip.id, !clip.is_favorite);
-    await refreshData();
+    const nextFavoriteValue = clip.is_favorite ? 0 : 1;
+
+    setClips((currentClips) => {
+      return currentClips
+        .map((item) =>
+          item.id === clip.id
+            ? {
+                ...item,
+                is_favorite: nextFavoriteValue,
+              }
+            : item,
+        )
+        .filter((item) => {
+          if (!favoritesOnly) return true;
+
+          return item.is_favorite === 1;
+        });
+    });
+
+    try {
+      await updateClipFavorite(clip.id, Boolean(nextFavoriteValue));
+    } catch (error) {
+      console.error(error);
+
+      // rollback if DB update fails
+      setClips((currentClips) =>
+        currentClips.map((item) =>
+          item.id === clip.id
+            ? {
+                ...item,
+                is_favorite: clip.is_favorite,
+              }
+            : item,
+        ),
+      );
+    }
   }
 
   async function handleUpdateNote(clip: Clip, note: string | null) {
-    await updateClipNote(clip.id, note);
-    await refreshData();
+    const cleanNote = note?.trim() ? note.trim() : null;
+
+    setClips((currentClips) =>
+      currentClips.map((item) =>
+        item.id === clip.id
+          ? {
+              ...item,
+              note: cleanNote,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      await updateClipNote(clip.id, cleanNote);
+    } catch (error) {
+      console.error(error);
+
+      // rollback if DB update fails
+      setClips((currentClips) =>
+        currentClips.map((item) =>
+          item.id === clip.id
+            ? {
+                ...item,
+                note: clip.note,
+              }
+            : item,
+        ),
+      );
+    }
   }
 
   function handleSelectDate(date: Date) {
