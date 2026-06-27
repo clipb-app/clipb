@@ -544,9 +544,15 @@ Thumbs.db
 - [x] Add release notes
 - [x] Add privacy policy
 - [ ] Add landing page
-- [ ] Add screenshots/GIF demo
+- [x] Add screenshots/GIF demo
 - [ ] Add GitHub releases
 - [ ] Add signed builds if needed
+
+---
+
+### macOS security note
+
+This build is currently unsigned and not notarized. macOS may show a warning when opening the app. This will be improved in a future signed release.
 
 ---
 
