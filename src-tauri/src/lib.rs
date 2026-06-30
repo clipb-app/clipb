@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
+    Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 use serde::Serialize;
@@ -11,11 +11,33 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+#[cfg(target_os = "macos")]
+fn show_app_in_dock(app: &tauri::AppHandle) -> Result<(), String> {
+    app.set_activation_policy(tauri::ActivationPolicy::Regular)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_app_in_dock(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn hide_app_from_dock(app: &tauri::AppHandle) -> Result<(), String> {
+    app.set_activation_policy(tauri::ActivationPolicy::Accessory)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hide_app_from_dock(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
+}
 
 fn show_window(window: &WebviewWindow) -> Result<(), String> {
     window.show().map_err(|error| error.to_string())?;
@@ -26,11 +48,83 @@ fn show_window(window: &WebviewWindow) -> Result<(), String> {
 }
 
 fn show_main(app: &tauri::AppHandle) -> Result<(), String> {
+    show_app_in_dock(app)?;
+
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())?;
 
     show_window(&window)
+}
+
+trait MainWindowHandle: Clone + Send + 'static {
+    fn is_window_fullscreen(&self) -> Result<bool, String>;
+    fn set_window_fullscreen(&self, fullscreen: bool) -> Result<(), String>;
+    fn hide_window(&self) -> Result<(), String>;
+}
+
+impl MainWindowHandle for Window {
+    fn is_window_fullscreen(&self) -> Result<bool, String> {
+        Window::is_fullscreen(self).map_err(|error| error.to_string())
+    }
+
+    fn set_window_fullscreen(&self, fullscreen: bool) -> Result<(), String> {
+        Window::set_fullscreen(self, fullscreen).map_err(|error| error.to_string())
+    }
+
+    fn hide_window(&self) -> Result<(), String> {
+        Window::hide(self).map_err(|error| error.to_string())
+    }
+}
+
+impl MainWindowHandle for WebviewWindow {
+    fn is_window_fullscreen(&self) -> Result<bool, String> {
+        WebviewWindow::is_fullscreen(self).map_err(|error| error.to_string())
+    }
+
+    fn set_window_fullscreen(&self, fullscreen: bool) -> Result<(), String> {
+        WebviewWindow::set_fullscreen(self, fullscreen).map_err(|error| error.to_string())
+    }
+
+    fn hide_window(&self) -> Result<(), String> {
+        WebviewWindow::hide(self).map_err(|error| error.to_string())
+    }
+}
+
+fn hide_main_to_tray<W>(app: &tauri::AppHandle, window: &W) -> Result<(), String>
+where
+    W: MainWindowHandle,
+{
+    if window.is_window_fullscreen().unwrap_or(false) {
+        window.set_window_fullscreen(false)?;
+
+        let app_for_thread = app.clone();
+        let window_for_thread = window.clone();
+
+        std::thread::spawn(move || {
+            // Give macOS a moment to leave the fullscreen Space before hiding.
+            // Hiding during that transition can leave a black fullscreen Space behind.
+            std::thread::sleep(Duration::from_millis(250));
+
+            let app_for_main = app_for_thread.clone();
+            let window_for_main = window_for_thread.clone();
+
+            let _ = app_for_thread.run_on_main_thread(move || {
+                if let Err(error) = window_for_main.hide_window() {
+                    eprintln!("Could not hide ClipB main window: {error}");
+                }
+
+                if let Err(error) = hide_app_from_dock(&app_for_main) {
+                    eprintln!("Could not hide ClipB from Dock: {error}");
+                }
+            });
+        });
+
+        return Ok(());
+    }
+
+    window.hide_window()?;
+    hide_app_from_dock(app)
 }
 
 fn get_or_create_quick_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
@@ -474,7 +568,7 @@ fn get_active_app() -> Result<ActiveAppInfo, String> {
 #[tauri::command]
 fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        window.hide().map_err(|error| error.to_string())?;
+        hide_main_to_tray(&app, &window)?;
     }
 
     Ok(())
@@ -621,12 +715,18 @@ pub fn run() {
             WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
 
-                let _ = window.hide();
+                if window.label() == "main" {
+                    let app = window.app_handle();
+                    let _ = hide_main_to_tray(app, window);
+                } else {
+                    let _ = window.hide();
+                }
             }
             WindowEvent::Resized(_) => {
                 if window.label() == "main" {
                     if let Ok(true) = window.is_minimized() {
-                        let _ = window.hide();
+                        let app = window.app_handle();
+                        let _ = hide_main_to_tray(app, window);
                     }
                 }
             }
