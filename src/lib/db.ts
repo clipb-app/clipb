@@ -17,6 +17,8 @@ import { hashText } from "./hash";
 import { detectClipCategory } from "./clipDetection";
 import { deleteAssetFile } from "./assets";
 import { DEFAULT_SETTINGS } from "./defaultSettings";
+import { normalizeExportedClipForImport } from "./backupFormat";
+import { getRetentionCleanupPlan } from "./retention";
 
 const DB_URL = "sqlite:clipb.db";
 
@@ -866,13 +868,16 @@ export async function runRetentionCleanup(
   }
 
   const db = await getDb();
-  const days = Number(activeSettings.historyRetentionDays);
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const plan = getRetentionCleanupPlan(activeSettings);
+
+  if (!plan) {
+    return 0;
+  }
 
   const conditions = ["created_at < ?"];
-  const params: unknown[] = [cutoff];
+  const params: unknown[] = [plan.cutoff];
 
-  if (activeSettings.protectPinnedClips) {
+  if (plan.protectPinnedClips) {
     conditions.push("is_pinned = 0");
   }
 
@@ -909,29 +914,12 @@ export async function importClipsFromBackup(
   let skipped = 0;
 
   for (const clip of exportedClips) {
-    if (clip.type !== "text/plain") {
+    const normalizedClip = normalizeExportedClipForImport(clip);
+
+    if (!normalizedClip) {
       skipped++;
       continue;
     }
-
-    const cleanContent = clip.content.trim();
-
-    if (!cleanContent) {
-      skipped++;
-      continue;
-    }
-
-    const createdAt =
-      Number.isFinite(clip.createdAt) && clip.createdAt > 0
-        ? clip.createdAt
-        : Date.now();
-
-    const updatedAt =
-      Number.isFinite(clip.updatedAt) && clip.updatedAt > 0
-        ? clip.updatedAt
-        : createdAt;
-
-    const contentHash = hashText(cleanContent);
 
     const existing = await db.select<Clip[]>(
       `
@@ -942,16 +930,17 @@ export async function importClipsFromBackup(
           AND created_at = ?
         LIMIT 1;
       `,
-      [contentHash, cleanContent, createdAt],
+      [
+        normalizedClip.contentHash,
+        normalizedClip.content,
+        normalizedClip.createdAt,
+      ],
     );
 
     if (existing.length > 0) {
       skipped++;
       continue;
     }
-
-    const category = detectClipCategory(cleanContent);
-
     await db.execute(
       `
     INSERT INTO clips (
@@ -972,18 +961,18 @@ export async function importClipsFromBackup(
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   `,
       [
-        cleanContent,
-        contentHash,
+        normalizedClip.content,
+        normalizedClip.contentHash,
         "text/plain",
-        category,
+        normalizedClip.category,
         null,
         null,
         null,
         null,
         null,
-        createdAt,
-        updatedAt,
-        clip.isPinned ? 1 : 0,
+        normalizedClip.createdAt,
+        normalizedClip.updatedAt,
+        normalizedClip.isPinned ? 1 : 0,
         0,
       ],
     );
