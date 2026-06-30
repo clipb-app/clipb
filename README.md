@@ -537,9 +537,10 @@ Thumbs.db
 ### v1.0 — Public Release
 
 - [x] Add app icon
-- [ ] Add installer builds
+- [x] Add installer builds
 - [ ] Add Windows build
-- [ ] Add macOS build
+- [ ] Add Intel/universal macOS build
+- [x] Add macOS build
 - [ ] Add Linux build
 - [x] Add release notes
 - [x] Add privacy policy
