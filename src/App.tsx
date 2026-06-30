@@ -55,6 +55,7 @@ import {
   toDayKey,
 } from "./lib/dates";
 import { exportClipBArchive, importClipBArchive } from "./lib/clipbArchive";
+import { DEFAULT_SETTINGS } from "./lib/defaultSettings";
 
 function groupClipsByDay(clips: Clip[]) {
   return clips.reduce<Record<string, Clip[]>>((groups, clip) => {
@@ -69,25 +70,6 @@ function groupClipsByDay(clips: Clip[]) {
     return groups;
   }, {});
 }
-
-const DEFAULT_SETTINGS: AppSettings = {
-  historyRetentionDays: "never",
-  protectPinnedClips: true,
-  watchClipboard: true,
-  themeMode: "system",
-  launchOnStartup: false,
-
-  minClipLength: 2,
-  maxClipLength: 50000,
-  ignoreSensitiveClips: true,
-  ignoreLikelyPasswords: true,
-  ignoreLikelyApiKeys: true,
-  privateMode: false,
-  pauseUntil: null,
-  ignoredApps: [],
-  backupCopiedFiles: false,
-  maxBackupFileSizeMb: 25,
-};
 
 function formatPauseRemaining(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));

@@ -16,31 +16,13 @@ import type {
 import { hashText } from "./hash";
 import { detectClipCategory } from "./clipDetection";
 import { deleteAssetFile } from "./assets";
+import { DEFAULT_SETTINGS } from "./defaultSettings";
 
 const DB_URL = "sqlite:clipb.db";
 
 type Db = Awaited<ReturnType<typeof Database.load>>;
 
 let dbPromise: Promise<Db> | null = null;
-
-const DEFAULT_SETTINGS: AppSettings = {
-  historyRetentionDays: "never",
-  protectPinnedClips: true,
-  watchClipboard: true,
-  themeMode: "system",
-  launchOnStartup: false,
-
-  minClipLength: 2,
-  maxClipLength: 50000,
-  ignoreSensitiveClips: true,
-  ignoreLikelyPasswords: true,
-  ignoreLikelyApiKeys: true,
-  privateMode: false,
-  pauseUntil: null,
-  ignoredApps: [],
-  backupCopiedFiles: false,
-  maxBackupFileSizeMb: 25,
-};
 
 async function tryExecute(db: Db, sql: string) {
   try {
