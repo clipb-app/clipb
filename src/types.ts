@@ -4,6 +4,14 @@ export type RetentionDays = "never" | "7" | "30" | "90" | "180" | "365";
 
 export type ThemeMode = "system" | "light" | "dark";
 
+export type ThemePalette =
+  | "clipb"
+  | "paper-mono"
+  | "ocean-mint"
+  | "ember-slate"
+  | "forest-dawn"
+  | "orchid-ink";
+
 export type ClipCategory = "text" | "url" | "code" | "image" | "file";
 
 export type ClipContentFilter =
@@ -51,6 +59,7 @@ export interface AppSettings {
   protectPinnedClips: boolean;
   watchClipboard: boolean;
   themeMode: ThemeMode;
+  themePalette: ThemePalette;
   launchOnStartup: boolean;
 
   minClipLength: number;

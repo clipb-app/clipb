@@ -3,8 +3,9 @@ import { Clipboard, Search, X } from "lucide-react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Clip } from "../types";
 import { formatTime, toDayKey } from "../lib/dates";
-import { getRecentClips } from "../lib/db";
+import { getAppSettings, getRecentClips } from "../lib/db";
 import { hideQuickWindow } from "../lib/desktop";
+import { applyDocumentTheme } from "../lib/themes";
 
 export function QuickCopyWindow() {
   const [query, setQuery] = useState("");
@@ -24,6 +25,10 @@ export function QuickCopyWindow() {
     setClips(rows);
     setActiveIndex(0);
   }, [query]);
+
+  useEffect(() => {
+    getAppSettings().then(applyDocumentTheme).catch(console.error);
+  }, []);
 
   useEffect(() => {
     loadClips().catch(console.error);

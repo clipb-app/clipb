@@ -56,6 +56,7 @@ import {
 } from "./lib/dates";
 import { exportClipBArchive, importClipBArchive } from "./lib/clipbArchive";
 import { DEFAULT_SETTINGS } from "./lib/defaultSettings";
+import { applyDocumentTheme } from "./lib/themes";
 
 function groupClipsByDay(clips: Clip[]) {
   return clips.reduce<Record<string, Clip[]>>((groups, clip) => {
@@ -226,8 +227,8 @@ export default function App() {
   }, [settings.pauseUntil]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.themeMode;
-  }, [settings.themeMode]);
+    applyDocumentTheme(settings);
+  }, [settings.themeMode, settings.themePalette]);
 
   useEffect(() => {
     if (!settings.pauseUntil) return;

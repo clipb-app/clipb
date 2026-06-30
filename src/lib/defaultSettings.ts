@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   protectPinnedClips: true,
   watchClipboard: true,
   themeMode: "system",
+  themePalette: "clipb",
   launchOnStartup: false,
 
   minClipLength: 2,

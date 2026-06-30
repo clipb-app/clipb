@@ -9,6 +9,7 @@ import type {
   ExportedClip,
   RetentionDays,
   ThemeMode,
+  ThemePalette,
   ClipBArchiveClip,
   ClipBArchiveClipTag,
   ClipBArchiveTag,
@@ -19,6 +20,7 @@ import { deleteAssetFile } from "./assets";
 import { DEFAULT_SETTINGS } from "./defaultSettings";
 import { normalizeExportedClipForImport } from "./backupFormat";
 import { getRetentionCleanupPlan } from "./retention";
+import { isThemePalette } from "./themes";
 
 const DB_URL = "sqlite:clipb.db";
 
@@ -144,6 +146,14 @@ async function initDb(db: Db) {
       VALUES (?, ?);
     `,
     ["theme_mode", DEFAULT_SETTINGS.themeMode],
+  );
+
+  await db.execute(
+    `
+      INSERT OR IGNORE INTO settings (key, value)
+      VALUES (?, ?);
+    `,
+    ["theme_palette", DEFAULT_SETTINGS.themePalette],
   );
 
   await db.execute(
@@ -648,9 +658,16 @@ export async function getAppSettings(): Promise<AppSettings> {
     ? (themeValue as ThemeMode)
     : DEFAULT_SETTINGS.themeMode;
 
+  const paletteValue = map.get("theme_palette");
+
+  const themePalette: ThemePalette = isThemePalette(paletteValue)
+    ? paletteValue
+    : DEFAULT_SETTINGS.themePalette;
+
   return {
     historyRetentionDays,
     themeMode,
+    themePalette,
 
     protectPinnedClips: getBooleanSetting(
       map,
@@ -764,6 +781,14 @@ export async function updateAppSettings(settings: AppSettings): Promise<void> {
     VALUES (?, ?);
   `,
     ["theme_mode", settings.themeMode],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["theme_palette", settings.themePalette],
   );
 
   await db.execute(

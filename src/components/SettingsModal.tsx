@@ -9,7 +9,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import type { AppSettings, RetentionDays, ThemeMode } from "../types";
+import type { AppSettings, RetentionDays } from "../types";
+import { THEME_MODE_OPTIONS, THEME_PALETTE_OPTIONS } from "../lib/themes";
 
 interface SettingsModalProps {
   open: boolean;
@@ -51,28 +52,6 @@ const pauseOptions = [
   { label: "15 min", milliseconds: 15 * 60 * 1000 },
   { label: "30 min", milliseconds: 30 * 60 * 1000 },
   { label: "1 hour", milliseconds: 60 * 60 * 1000 },
-];
-
-const themeOptions: Array<{
-  label: string;
-  value: ThemeMode;
-  description: string;
-}> = [
-  {
-    label: "System",
-    value: "system",
-    description: "Follow your computer appearance.",
-  },
-  {
-    label: "Light",
-    value: "light",
-    description: "Use ClipB in light mode.",
-  },
-  {
-    label: "Dark",
-    value: "dark",
-    description: "Use ClipB in dark mode.",
-  },
 ];
 
 export function SettingsModal({
@@ -193,12 +172,14 @@ export function SettingsModal({
               </div>
             </div>
 
-            <div className="theme-options">
-              {themeOptions.map((option) => (
+            <div className="theme-mode-options">
+              {THEME_MODE_OPTIONS.map((option) => (
                 <button
+                  type="button"
                   key={option.value}
+                  aria-pressed={settings.themeMode === option.value}
                   className={[
-                    "theme-option",
+                    "theme-mode-option",
                     settings.themeMode === option.value ? "active" : "",
                   ].join(" ")}
                   onClick={() =>
@@ -208,6 +189,53 @@ export function SettingsModal({
                     })
                   }
                 >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="theme-palette-options">
+              {THEME_PALETTE_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  aria-pressed={settings.themePalette === option.value}
+                  className={[
+                    "theme-palette-option",
+                    settings.themePalette === option.value ? "active" : "",
+                  ].join(" ")}
+                  onClick={() =>
+                    updateSetting({
+                      ...settings,
+                      themePalette: option.value,
+                    })
+                  }
+                >
+                  <span
+                    className="theme-palette-option__swatches"
+                    aria-hidden="true"
+                  >
+                    <span className="theme-palette-option__swatch-row">
+                      {option.swatches.light.map((color) => (
+                        <span
+                          key={`${option.value}-light-${color}`}
+                          className="theme-palette-option__swatch"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </span>
+                    <span className="theme-palette-option__swatch-row">
+                      {option.swatches.dark.map((color) => (
+                        <span
+                          key={`${option.value}-dark-${color}`}
+                          className="theme-palette-option__swatch"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </span>
+                  </span>
+
                   <strong>{option.label}</strong>
                   <span>{option.description}</span>
                 </button>
