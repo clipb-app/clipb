@@ -1,4 +1,4 @@
-import { CalendarDays, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { DailyCount, ViewMode } from "../types";
 import { buildMonthCalendar, toDayKey } from "../lib/dates";
 
@@ -49,9 +49,7 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand__icon">
-          <CalendarDays size={20} />
-        </div>
+        <span className="brand__icon" aria-hidden="true" />
 
         <div>
           <h1>ClipB</h1>
