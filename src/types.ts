@@ -10,7 +10,8 @@ export type ThemePalette =
   | "ocean-mint"
   | "ember-slate"
   | "forest-dawn"
-  | "orchid-ink";
+  | "orchid-ink"
+  | "sakura-pink";
 
 export type ClipCategory = "text" | "url" | "code" | "image" | "file";
 

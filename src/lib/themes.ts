@@ -1,5 +1,10 @@
 import type { AppSettings, ThemeMode, ThemePalette } from "../types";
 
+export type ThemeSettings = Pick<AppSettings, "themeMode" | "themePalette">;
+
+const THEME_STORAGE_KEY = "clipb.theme";
+const THEME_MODE_VALUES: ThemeMode[] = ["system", "light", "dark"];
+
 export const THEME_MODE_OPTIONS: Array<{
   label: string;
   value: ThemeMode;
@@ -85,18 +90,102 @@ export const THEME_PALETTE_OPTIONS: Array<{
       dark: ["#21172d", "#d8b4fe", "#f0abfc"],
     },
   },
+  {
+    label: "Sakura Pink",
+    value: "sakura-pink",
+    description: "Blossom pink, plum, and leaf green.",
+    swatches: {
+      light: ["#fff1f7", "#be185d", "#4d7c0f"],
+      dark: ["#281722", "#f9a8d4", "#86efac"],
+    },
+  },
 ];
 
 export const THEME_PALETTE_VALUES: ThemePalette[] =
   THEME_PALETTE_OPTIONS.map((option) => option.value);
 
-export function isThemePalette(value: string | null | undefined): value is ThemePalette {
+export function isThemePalette(
+  value: string | null | undefined,
+): value is ThemePalette {
   return THEME_PALETTE_VALUES.includes(value as ThemePalette);
 }
 
-export function applyDocumentTheme(
-  settings: Pick<AppSettings, "themeMode" | "themePalette">,
+function isThemeMode(value: unknown): value is ThemeMode {
+  return THEME_MODE_VALUES.includes(value as ThemeMode);
+}
+
+function parseStoredTheme(value: string | null): ThemeSettings | null {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Partial<ThemeSettings>;
+
+    if (
+      isThemeMode(parsed.themeMode) &&
+      isThemePalette(parsed.themePalette)
+    ) {
+      return {
+        themeMode: parsed.themeMode,
+        themePalette: parsed.themePalette,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function persistTheme(settings: ThemeSettings) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const serialized = JSON.stringify(settings);
+
+    if (window.localStorage.getItem(THEME_STORAGE_KEY) !== serialized) {
+      window.localStorage.setItem(THEME_STORAGE_KEY, serialized);
+    }
+  } catch {
+    // Theme persistence is best-effort; DB settings remain the source of truth.
+  }
+}
+
+export function readStoredTheme(): ThemeSettings | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return parseStoredTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+export function subscribeToThemeChanges(
+  onThemeChange: (settings: ThemeSettings) => void,
 ) {
+  if (typeof window === "undefined") return () => {};
+
+  function handleStorage(event: StorageEvent) {
+    if (event.key !== THEME_STORAGE_KEY) return;
+
+    const settings = parseStoredTheme(event.newValue);
+    if (settings) {
+      onThemeChange(settings);
+    }
+  }
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+export function applyDocumentTheme(settings: ThemeSettings) {
+  if (typeof document === "undefined") return;
+
   document.documentElement.dataset.theme = settings.themeMode;
   document.documentElement.dataset.themePalette = settings.themePalette;
+
+  persistTheme(settings);
 }

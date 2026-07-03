@@ -10,11 +10,12 @@ import {
 test("theme palettes include the default palette and unique values", () => {
   assert.equal(DEFAULT_SETTINGS.themePalette, "clipb");
   assert.equal(isThemePalette(DEFAULT_SETTINGS.themePalette), true);
+  assert.equal(isThemePalette("sakura-pink"), true);
 
   const uniqueValues = new Set(THEME_PALETTE_VALUES);
 
   assert.equal(uniqueValues.size, THEME_PALETTE_VALUES.length);
-  assert.ok(THEME_PALETTE_OPTIONS.length >= 6);
+  assert.ok(THEME_PALETTE_OPTIONS.length >= 7);
 });
 
 test("theme palette options provide light and dark swatches", () => {

@@ -5,7 +5,11 @@ import type { Clip } from "../types";
 import { formatTime, toDayKey } from "../lib/dates";
 import { getAppSettings, getRecentClips } from "../lib/db";
 import { hideQuickWindow } from "../lib/desktop";
-import { applyDocumentTheme } from "../lib/themes";
+import {
+  applyDocumentTheme,
+  readStoredTheme,
+  subscribeToThemeChanges,
+} from "../lib/themes";
 
 export function QuickCopyWindow() {
   const [query, setQuery] = useState("");
@@ -26,9 +30,21 @@ export function QuickCopyWindow() {
     setActiveIndex(0);
   }, [query]);
 
-  useEffect(() => {
-    getAppSettings().then(applyDocumentTheme).catch(console.error);
+  const refreshTheme = useCallback(async () => {
+    const settings = await getAppSettings();
+    applyDocumentTheme(settings);
   }, []);
+
+  useEffect(() => {
+    const storedTheme = readStoredTheme();
+    if (storedTheme) {
+      applyDocumentTheme(storedTheme);
+    }
+
+    refreshTheme().catch(console.error);
+
+    return subscribeToThemeChanges(applyDocumentTheme);
+  }, [refreshTheme]);
 
   useEffect(() => {
     loadClips().catch(console.error);
@@ -39,15 +55,24 @@ export function QuickCopyWindow() {
 
     function handleWindowFocus() {
       inputRef.current?.focus();
+      refreshTheme().catch(console.error);
       loadClips().catch(console.error);
     }
 
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        handleWindowFocus();
+      }
+    }
+
     window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [loadClips]);
+  }, [loadClips, refreshTheme]);
 
   const activeClip = useMemo(() => {
     return clips[activeIndex] ?? null;

@@ -7,6 +7,10 @@ import "./index.css";
 const searchParams = new URLSearchParams(window.location.search);
 const windowMode = searchParams.get("window");
 
+if (windowMode) {
+  document.documentElement.dataset.windowMode = windowMode;
+}
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     {windowMode === "quick" ? <QuickCopyWindow /> : <App />}

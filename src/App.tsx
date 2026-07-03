@@ -56,7 +56,7 @@ import {
 } from "./lib/dates";
 import { exportClipBArchive, importClipBArchive } from "./lib/clipbArchive";
 import { DEFAULT_SETTINGS } from "./lib/defaultSettings";
-import { applyDocumentTheme } from "./lib/themes";
+import { applyDocumentTheme, readStoredTheme } from "./lib/themes";
 
 function groupClipsByDay(clips: Clip[]) {
   return clips.reduce<Record<string, Clip[]>>((groups, clip) => {
@@ -127,7 +127,16 @@ export default function App() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const storedTheme = readStoredTheme();
+
+    return storedTheme
+      ? {
+          ...DEFAULT_SETTINGS,
+          ...storedTheme,
+        }
+      : DEFAULT_SETTINGS;
+  });
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [contentFilter, setContentFilter] = useState<ClipContentFilter>("all");
