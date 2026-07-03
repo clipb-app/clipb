@@ -1,7 +1,7 @@
 import {
   Check,
-  Clipboard,
   Code2,
+  Copy,
   File,
   FileText,
   Heart,
@@ -149,7 +149,7 @@ export function ClipCard({
           {copied ? (
             <Check size={16} aria-hidden="true" />
           ) : (
-            <Clipboard size={16} aria-hidden="true" />
+            <Copy size={16} aria-hidden="true" />
           )}
           {getCopyLabel(clip, copied)}
         </button>
