@@ -1151,8 +1151,8 @@ button:active {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: var(--brand);
-  color: var(--brand-contrast);
+  background: var(--brand-contrast);
+  color: var(--brand);
   box-shadow: 0 12px 28px var(--brand-shadow);
 }
 
