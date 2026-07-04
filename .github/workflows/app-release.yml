@@ -1,0 +1,74 @@
+name: App Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Git tag to publish, for example v0.8.0
+        required: true
+        type: string
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-release-${{ inputs.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  macos-release:
+    name: Build macOS ${{ matrix.name }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Apple Silicon
+            args: --target aarch64-apple-darwin
+          - name: Universal
+            args: --target universal-apple-darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and draft release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ inputs.tag_name || github.ref_name }}
+          releaseName: ClipB ${{ inputs.tag_name || github.ref_name }}
+          releaseBody: See the release notes and installer assets below.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

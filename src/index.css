@@ -1088,9 +1088,12 @@ body {
 }
 
 :root[data-window-mode="quick"] body {
-  background:
-    radial-gradient(circle at top left, var(--bg-glow), transparent 28rem),
-    var(--bg-soft);
+  background: transparent;
+}
+
+:root[data-window-mode="quick"],
+:root[data-window-mode="quick"] #root {
+  background: transparent;
 }
 
 button,
@@ -2120,6 +2123,7 @@ button:active {
   height: calc(100vh - 16px);
   margin: 8px;
   overflow: hidden;
+  isolation: isolate;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   gap: 14px;

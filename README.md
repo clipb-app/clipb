@@ -407,10 +407,48 @@ Run tests with coverage:
 pnpm test:coverage
 ```
 
+Run the CI coverage gate locally:
+
+```bash
+pnpm run test:coverage:ci
+```
+
 Build the desktop app:
 
 ```bash
 pnpm tauri build
+```
+
+### CI/CD
+
+GitHub Actions workflows live in `.github/workflows`.
+
+- `app-ci.yml` runs on pull requests and pushes to `dev` or `main`.
+- `app-ci.yml` installs dependencies, runs tests, checks the current coverage baseline, builds the frontend, checks Rust formatting, and runs `cargo check`.
+- `app-release.yml` runs from a pushed version tag such as `v0.8.0`, or manually from GitHub Actions with a tag name.
+- `app-release.yml` builds Apple Silicon and Universal macOS release drafts using Tauri.
+
+The CI coverage gate currently protects the existing baseline:
+
+```text
+lines >= 80%
+statements >= 80%
+branches >= 75%
+functions >= 75%
+```
+
+Raise those thresholds toward 90% as more tests are added.
+
+Release automation expects this repository secret:
+
+```text
+TAURI_SIGNING_PRIVATE_KEY
+```
+
+If the signing key is encrypted with a password, also add:
+
+```text
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ```
 
 ### Auto Updates
