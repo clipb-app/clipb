@@ -249,6 +249,24 @@ function run(argv) {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
+fn write_file_paths_to_clipboard_windows(paths: Vec<String>) -> Result<(), String> {
+    use clipboard_win::{formats::FileList, Clipboard, Setter};
+
+    let valid_paths = validate_existing_paths(&paths)?;
+    let clipboard_paths = valid_paths
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+
+    let _clipboard = Clipboard::new_attempts(10)
+        .map_err(|error| format!("Could not open clipboard: {error}"))?;
+
+    FileList
+        .write_clipboard(clipboard_paths.as_slice())
+        .map_err(|error| format!("Could not write file paths to clipboard: {error}"))
+}
+
 #[tauri::command]
 fn write_file_paths_to_clipboard(paths: Vec<String>) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -256,10 +274,15 @@ fn write_file_paths_to_clipboard(paths: Vec<String>) -> Result<(), String> {
         write_file_paths_to_clipboard_macos(paths)
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        write_file_paths_to_clipboard_windows(paths)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = paths;
-        Err("Copying file references is only implemented on macOS for now.".to_string())
+        Err("Copying file references is only implemented on macOS and Windows for now.".to_string())
     }
 }
 

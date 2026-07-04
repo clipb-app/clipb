@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clipboard, Search, X } from "lucide-react";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Clip } from "../types";
 import { formatTime, toDayKey } from "../lib/dates";
 import { getAppSettings, getRecentClips } from "../lib/db";
 import { hideQuickWindow } from "../lib/desktop";
+import { copyClipToClipboard } from "../lib/clipCopy";
 import {
   applyDocumentTheme,
   readStoredTheme,
@@ -90,7 +90,7 @@ export function QuickCopyWindow() {
   }, [activeIndex]);
 
   const copyClip = useCallback(async (clip: Clip) => {
-    await writeText(clip.content);
+    await copyClipToClipboard(clip);
 
     setCopiedId(clip.id);
 

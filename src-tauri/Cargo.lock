@@ -728,6 +728,7 @@ version = "0.8.0-beta.1"
 dependencies = [
  "active-win-pos-rs",
  "clipboard-files",
+ "clipboard-win 5.4.1",
  "hex",
  "serde",
  "serde_json",
