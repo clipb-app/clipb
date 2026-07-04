@@ -425,8 +425,9 @@ GitHub Actions workflows live in `.github/workflows`.
 
 - `app-ci.yml` runs on pull requests and pushes to any branch.
 - `app-ci.yml` installs dependencies, runs tests, checks the current coverage baseline, builds the frontend, checks Rust formatting, and runs `cargo check`.
+- `app-ci.yml` also runs a Windows compile check on `windows-latest` so Windows support does not rely on a local Windows machine.
 - `app-release.yml` runs from a pushed version tag such as `v0.8.0`, or manually from GitHub Actions with a tag name.
-- `app-release.yml` runs the release checks first, then builds Apple Silicon and Universal macOS release drafts using Tauri.
+- `app-release.yml` runs the release checks first, then builds Apple Silicon, Universal macOS, and Windows NSIS release drafts using Tauri.
 
 The CI coverage gate currently protects the existing baseline:
 
@@ -469,7 +470,16 @@ git tag v0.8.0
 git push origin v0.8.0
 ```
 
-GitHub then runs `app-release.yml`, creates a draft release, uploads the macOS bundles, uploads updater signatures, and uploads `latest.json` for the updater endpoint.
+GitHub then runs `app-release.yml`, creates a draft release, uploads the macOS and Windows bundles, uploads updater signatures, and uploads `latest.json` for the updater endpoint.
+
+For a Windows test build, use a prerelease tag:
+
+```bash
+git tag v0.8.0-beta.1
+git push origin v0.8.0-beta.1
+```
+
+Tags with a hyphen, such as `v0.8.0-beta.1`, are marked as prereleases by the release workflow. The workflow builds a Windows NSIS `.exe` installer that can be downloaded from the draft release, reviewed, and then published as a prerelease for testing.
 
 You can also run the same workflow manually from GitHub:
 
