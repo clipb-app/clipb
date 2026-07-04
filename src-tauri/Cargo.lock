@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "clipb-app"
-version = "0.1.0"
+version = "0.7.0"
 dependencies = [
  "active-win-pos-rs",
  "clipboard-files",

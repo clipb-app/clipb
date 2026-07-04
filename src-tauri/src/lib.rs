@@ -681,9 +681,11 @@ pub fn run() {
             ))?;
 
             let launch_item = MenuItem::with_id(app, "launch", "Launch ClipB", true, None::<&str>)?;
+            let quick_copy_item =
+                MenuItem::with_id(app, "quick-copy", "Open Quick Copy", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit ClipB", true, None::<&str>)?;
 
-            let menu = Menu::with_items(app, &[&launch_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&launch_item, &quick_copy_item, &quit_item])?;
 
             TrayIconBuilder::with_id("clipb-tray")
                 .tooltip("ClipB")
@@ -693,6 +695,9 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "launch" => {
                         let _ = show_main(app);
+                    }
+                    "quick-copy" => {
+                        let _ = show_quick(app);
                     }
                     "quit" => {
                         app.exit(0);
