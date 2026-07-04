@@ -314,10 +314,13 @@ function run(argv) {
 
 #[cfg(target_os = "windows")]
 fn write_image_file_to_clipboard_windows(path: String) -> Result<(), String> {
+    use clipboard_win::{formats::FileList, Clipboard, Setter};
+
     let image_path = validate_existing_file_path(&path, "Image file")?;
     let decoded = image::open(&image_path)
         .map_err(|error| format!("Could not decode image file for clipboard: {error}"))?;
     let rgba = decoded.to_rgba8();
+    let clipboard_paths = vec![image_path.to_string_lossy().into_owned()];
 
     let image_data = arboard::ImageData {
         width: rgba.width() as usize,
@@ -330,7 +333,16 @@ fn write_image_file_to_clipboard_windows(path: String) -> Result<(), String> {
 
     clipboard
         .set_image(image_data)
-        .map_err(|error| format!("Could not write image to clipboard: {error}"))
+        .map_err(|error| format!("Could not write image to clipboard: {error}"))?;
+    drop(clipboard);
+
+    // Explorer/Desktop paste needs a file-list clipboard format in addition to image pixels.
+    let _clipboard = Clipboard::new_attempts(10)
+        .map_err(|error| format!("Could not open clipboard for image file reference: {error}"))?;
+
+    FileList
+        .write_clipboard(clipboard_paths.as_slice())
+        .map_err(|error| format!("Could not write image file reference to clipboard: {error}"))
 }
 
 #[tauri::command]
