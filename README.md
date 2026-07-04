@@ -401,6 +401,59 @@ Build the desktop app:
 pnpm tauri build
 ```
 
+### Auto Updates
+
+ClipB checks GitHub Releases for signed update metadata at:
+
+```text
+https://github.com/clipb-app/clipb/releases/latest/download/latest.json
+```
+
+If you publish beta builds as GitHub prereleases, confirm the `latest` URL resolves to the release you expect. For prerelease-only update channels, host `latest.json` from a stable URL such as `https://getclipb.com/latest.json` and update `tauri.conf.json`.
+
+The updater signing key was generated outside the repo at:
+
+```text
+~/.tauri/clipb-updater.key
+```
+
+Do not commit or share the private key. Use it only when building release artifacts:
+
+```bash
+TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/clipb-updater.key" pnpm tauri build
+```
+
+Each updater-enabled release needs these files attached to GitHub Releases:
+
+- The normal `.dmg` installer downloads for the landing page
+- The generated `.app.tar.gz` updater archive
+- The generated `.app.tar.gz.sig` signature file
+- A `latest.json` file with the release version, notes, URLs, and signatures
+
+Example `latest.json`:
+
+```json
+{
+  "version": "0.6.1",
+  "notes": "ClipB update notes",
+  "pub_date": "2026-07-04T00:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "contents of ClipB.app.tar.gz.sig",
+      "url": "https://github.com/clipb-app/clipb/releases/download/v0.6.1/ClipB.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "contents of ClipB.app.tar.gz.sig",
+      "url": "https://github.com/clipb-app/clipb/releases/download/v0.6.1/ClipB.app.tar.gz"
+    }
+  }
+}
+```
+
+If you ship one universal macOS updater archive, use the same archive URL and signature for both `darwin-aarch64` and `darwin-x86_64` in `latest.json`. The installed app will request the platform key that matches the Mac it is running on.
+
+Auto updates only begin after a user installs an updater-enabled build. Older builds that do not include the updater plugin cannot update themselves.
+
 ---
 
 ## Recommended `.gitignore`
@@ -539,14 +592,15 @@ Thumbs.db
 - [x] Add app icon
 - [x] Add installer builds
 - [ ] Add Windows build
-- [ ] Add Intel/universal macOS build
+- [x] Add Intel/universal macOS build
 - [x] Add macOS build
 - [ ] Add Linux build
 - [x] Add release notes
 - [x] Add privacy policy
-- [ ] Add landing page
+- [x] Add landing page
 - [x] Add screenshots/GIF demo
-- [ ] Add GitHub releases
+- [x] Add GitHub releases
+- [x] Add in-app auto updates
 - [ ] Add signed builds if needed
 
 ---

@@ -57,6 +57,11 @@ import {
 import { exportClipBArchive, importClipBArchive } from "./lib/clipbArchive";
 import { DEFAULT_SETTINGS } from "./lib/defaultSettings";
 import { applyDocumentTheme, readStoredTheme } from "./lib/themes";
+import {
+  checkForClipBUpdate,
+  installClipBUpdate,
+  relaunchClipB,
+} from "./lib/updater";
 
 function groupClipsByDay(clips: Clip[]) {
   return clips.reduce<Record<string, Clip[]>>((groups, clip) => {
@@ -147,8 +152,11 @@ export default function App() {
     Record<number, ClipTag[]>
   >({});
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
 
   const toastTimerRef = useRef<number | null>(null);
+  const updateCheckInFlightRef = useRef(false);
+  const automaticUpdateCheckDoneRef = useRef(false);
 
   const loadClips = useCallback(
     async (options?: { showLoading?: boolean }) => {
@@ -273,6 +281,17 @@ export default function App() {
 
       await runRetentionCleanup(mergedSettings);
       await refreshData();
+
+      if (
+        mergedSettings.checkForUpdatesAutomatically &&
+        !automaticUpdateCheckDoneRef.current
+      ) {
+        automaticUpdateCheckDoneRef.current = true;
+        void handleCheckForUpdates({
+          automatic: true,
+          silentWhenCurrent: true,
+        });
+      }
     }
 
     boot().catch(console.error);
@@ -317,6 +336,98 @@ export default function App() {
     toastTimerRef.current = window.setTimeout(() => {
       setToast(null);
     }, 2800);
+  }
+
+  async function handleCheckForUpdates(options?: {
+    automatic?: boolean;
+    silentWhenCurrent?: boolean;
+  }) {
+    if (updateCheckInFlightRef.current) return;
+
+    updateCheckInFlightRef.current = true;
+    setCheckingForUpdates(true);
+
+    if (!options?.automatic) {
+      showToast("Checking for updates", "Looking for signed ClipB releases.");
+    }
+
+    try {
+      const update = await checkForClipBUpdate();
+
+      if (!update) {
+        if (!options?.silentWhenCurrent) {
+          showToast(
+            "ClipB is up to date",
+            "You are running the latest available version.",
+            "success",
+          );
+        }
+
+        return;
+      }
+
+      const releaseNotes = update.body ? `\n\n${update.body}` : "";
+      const shouldInstall = await confirm(
+        `ClipB ${update.version} is available. You are currently running ${update.currentVersion}.${releaseNotes}`,
+        {
+          title: "Update available",
+          kind: "info",
+          okLabel: "Download and install",
+          cancelLabel: "Later",
+        },
+      );
+
+      if (!shouldInstall) return;
+
+      showToast(
+        "Downloading update",
+        "ClipB will ask before relaunching to finish the update.",
+      );
+
+      await installClipBUpdate(update, (progress) => {
+        if (progress.percent === undefined) return;
+        if (progress.percent < 100 && progress.percent % 25 !== 0) return;
+
+        showToast(
+          "Installing update",
+          progress.percent >= 100
+            ? "Download complete. Installing update..."
+            : `Downloaded ${progress.percent}%`,
+        );
+      });
+
+      const shouldRelaunch = await confirm(
+        "ClipB has installed the update. Relaunch now to finish?",
+        {
+          title: "Update installed",
+          kind: "info",
+          okLabel: "Relaunch",
+          cancelLabel: "Later",
+        },
+      );
+
+      if (shouldRelaunch) {
+        await relaunchClipB();
+      } else {
+        showToast(
+          "Update installed",
+          "Relaunch ClipB later to finish applying it.",
+          "success",
+        );
+      }
+    } catch (error) {
+      console.error("Could not check for updates", error);
+
+      if (!options?.silentWhenCurrent) {
+        await message("Could not check for updates. Please try again later.", {
+          title: "Update check failed",
+          kind: "error",
+        });
+      }
+    } finally {
+      updateCheckInFlightRef.current = false;
+      setCheckingForUpdates(false);
+    }
   }
 
   async function handleAddTag(clipId: number, tagName: string) {
@@ -888,6 +999,8 @@ export default function App() {
         onExportArchive={handleExportClipBArchive}
         onImportArchive={handleImportClipBArchive}
         onClearAll={handleClearAll}
+        onCheckForUpdates={() => handleCheckForUpdates()}
+        checkingForUpdates={checkingForUpdates}
       />
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />

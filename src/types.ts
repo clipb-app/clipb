@@ -62,6 +62,7 @@ export interface AppSettings {
   themeMode: ThemeMode;
   themePalette: ThemePalette;
   launchOnStartup: boolean;
+  checkForUpdatesAutomatically: boolean;
 
   minClipLength: number;
   maxClipLength: number;

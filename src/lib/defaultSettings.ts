@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   themeMode: "system",
   themePalette: "clipb",
   launchOnStartup: false,
+  checkForUpdatesAutomatically: true,
 
   minClipLength: 2,
   maxClipLength: 50000,

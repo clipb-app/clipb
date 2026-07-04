@@ -185,6 +185,17 @@ async function initDb(db: Db) {
     INSERT OR IGNORE INTO settings (key, value)
     VALUES (?, ?);
   `,
+    [
+      "check_for_updates_automatically",
+      String(DEFAULT_SETTINGS.checkForUpdatesAutomatically),
+    ],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
     ["min_clip_length", String(DEFAULT_SETTINGS.minClipLength)],
   );
 
@@ -687,6 +698,12 @@ export async function getAppSettings(): Promise<AppSettings> {
       DEFAULT_SETTINGS.launchOnStartup,
     ),
 
+    checkForUpdatesAutomatically: getBooleanSetting(
+      map,
+      "check_for_updates_automatically",
+      DEFAULT_SETTINGS.checkForUpdatesAutomatically,
+    ),
+
     minClipLength: getNumberSetting(
       map,
       "min_clip_length",
@@ -797,6 +814,17 @@ export async function updateAppSettings(settings: AppSettings): Promise<void> {
     VALUES (?, ?);
   `,
     ["launch_on_startup", String(settings.launchOnStartup)],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    [
+      "check_for_updates_automatically",
+      String(settings.checkForUpdatesAutomatically),
+    ],
   );
 
   await db.execute(

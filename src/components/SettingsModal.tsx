@@ -3,6 +3,7 @@ import {
   Download,
   MonitorUp,
   Palette,
+  RefreshCw,
   ShieldCheck,
   TimerReset,
   Trash2,
@@ -22,6 +23,8 @@ interface SettingsModalProps {
   onExportArchive: () => void;
   onImportArchive: () => void;
   onClearAll: () => Promise<void>;
+  onCheckForUpdates: () => Promise<void>;
+  checkingForUpdates: boolean;
 }
 
 const retentionOptions: Array<{
@@ -64,6 +67,8 @@ export function SettingsModal({
   onExportArchive,
   onImportArchive,
   onClearAll,
+  onCheckForUpdates,
+  checkingForUpdates,
 }: SettingsModalProps) {
   const [ignoredAppInput, setIgnoredAppInput] = useState("");
 
@@ -274,6 +279,39 @@ export function SettingsModal({
                 }
               />
             </label>
+
+            <label className="setting-row">
+              <div>
+                <strong>Check for updates automatically</strong>
+                <span>Look for new signed ClipB releases when the app starts.</span>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={settings.checkForUpdatesAutomatically}
+                title="Check for updates automatically"
+                aria-label="Check for updates automatically"
+                onChange={(event) =>
+                  updateSetting({
+                    ...settings,
+                    checkForUpdatesAutomatically: event.target.checked,
+                  })
+                }
+              />
+            </label>
+
+            <div className="settings-actions-grid">
+              <button
+                className="settings-action-button"
+                onClick={onCheckForUpdates}
+                disabled={checkingForUpdates}
+                title="Check for updates"
+                aria-label="Check for updates"
+              >
+                <RefreshCw size={17} aria-hidden="true" />
+                {checkingForUpdates ? "Checking..." : "Check for updates"}
+              </button>
+            </div>
 
             <div className="settings-note">
               Closing or minimizing ClipB hides it to the tray. Use the tray
