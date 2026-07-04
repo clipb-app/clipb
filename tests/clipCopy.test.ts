@@ -128,6 +128,7 @@ test("copies image clips with the native image file writer first", async () => {
 
   assert.deepEqual(calls, [
     "suppress-files:/tmp/image.png",
+    "suppress-image:hash",
     "native:/tmp/image.png",
   ]);
 });
@@ -152,6 +153,7 @@ test("falls back to decoded image copy when native image file copy fails", async
 
   assert.deepEqual(calls, [
     "suppress-files:/tmp/image.webp",
+    "suppress-image:hash",
     "native:/tmp/image.webp",
     "debug:Native image file clipboard copy failed::Error: native unavailable",
     "read:/tmp/image.webp",
@@ -160,6 +162,30 @@ test("falls back to decoded image copy when native image file copy fails", async
     "suppress-image:image-hash",
     "write-decoded:1x1",
   ]);
+});
+
+test("does not double-suppress matching decoded image hashes", async () => {
+  const calls: string[] = [];
+
+  await copyImageClipWithAdapters(
+    clip({
+      category: "image",
+      content_hash: "image-hash",
+      content_type: "image/png",
+      asset_path: "/tmp/image.png",
+    }),
+    imageCopyAdapters(calls, {
+      writeNativeImageFile: async (path: string) => {
+        calls.push(`native:${path}`);
+        throw new Error("native unavailable");
+      },
+    }),
+  );
+
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("suppress-image:")),
+    ["suppress-image:image-hash"],
+  );
 });
 
 test("image copy helpers choose safe MIME values", () => {

@@ -312,6 +312,27 @@ function run(argv) {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
+fn write_image_file_to_clipboard_windows(path: String) -> Result<(), String> {
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+    let decoded = image::open(&image_path)
+        .map_err(|error| format!("Could not decode image file for clipboard: {error}"))?;
+    let rgba = decoded.to_rgba8();
+
+    let image_data = arboard::ImageData {
+        width: rgba.width() as usize,
+        height: rgba.height() as usize,
+        bytes: std::borrow::Cow::Owned(rgba.into_raw()),
+    };
+
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|error| format!("Could not open clipboard: {error}"))?;
+
+    clipboard
+        .set_image(image_data)
+        .map_err(|error| format!("Could not write image to clipboard: {error}"))
+}
+
 #[tauri::command]
 fn write_image_file_to_clipboard(path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -319,10 +340,18 @@ fn write_image_file_to_clipboard(path: String) -> Result<(), String> {
         write_image_file_to_clipboard_macos(path)
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        write_image_file_to_clipboard_windows(path)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = path;
-        Err("Native image file clipboard copy is only implemented on macOS for now.".to_string())
+        Err(
+            "Native image file clipboard copy is only implemented on macOS and Windows for now."
+                .to_string(),
+        )
     }
 }
 

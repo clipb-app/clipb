@@ -150,6 +150,7 @@ export async function copyImageClipWithAdapters(
   }
 
   adapters.suppressFilePaths([clip.asset_path]);
+  adapters.suppressImageHash(clip.content_hash);
 
   try {
     await adapters.writeNativeImageFile(clip.asset_path);
@@ -162,7 +163,9 @@ export async function copyImageClipWithAdapters(
   const decoded = await adapters.decodeImage(bytes, getImageMime(clip));
   const imageHash = await adapters.hashImageBytes(decoded.rgba);
 
-  adapters.suppressImageHash(imageHash);
+  if (imageHash !== clip.content_hash) {
+    adapters.suppressImageHash(imageHash);
+  }
 
   await adapters.writeDecodedImage(decoded);
 }
