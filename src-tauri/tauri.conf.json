@@ -23,7 +23,8 @@
         "enable": true,
         "scope": ["$APPDATA/assets/**"]
       }
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

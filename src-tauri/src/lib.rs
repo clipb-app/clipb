@@ -141,6 +141,7 @@ fn get_or_create_quick_window(app: &tauri::AppHandle) -> Result<WebviewWindow, S
     .inner_size(460.0, 560.0)
     .resizable(false)
     .decorations(false)
+    .transparent(true)
     .always_on_top(true)
     .skip_taskbar(true)
     .visible(false)
