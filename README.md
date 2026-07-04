@@ -395,6 +395,18 @@ Run the app in development mode:
 pnpm tauri dev
 ```
 
+Run tests:
+
+```bash
+pnpm test
+```
+
+Run tests with coverage:
+
+```bash
+pnpm test:coverage
+```
+
 Build the desktop app:
 
 ```bash

@@ -300,7 +300,7 @@ export function SettingsModal({
               />
             </label>
 
-            <div className="settings-actions-grid">
+            <div className="settings-actions-grid settings-update-actions">
               <button
                 className="settings-action-button"
                 onClick={onCheckForUpdates}

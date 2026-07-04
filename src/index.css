@@ -1864,6 +1864,10 @@ button:active {
   gap: 10px;
 }
 
+.settings-update-actions {
+  margin-top: 14px;
+}
+
 .settings-action-button,
 .settings-danger-button {
   min-height: 42px;
