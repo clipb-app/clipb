@@ -204,6 +204,20 @@ fn validate_existing_paths(paths: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(valid_paths)
 }
 
+fn validate_existing_file_path(path: &str, label: &str) -> Result<PathBuf, String> {
+    let file_path = PathBuf::from(path);
+
+    if !file_path.exists() {
+        return Err(format!("{label} does not exist"));
+    }
+
+    if !file_path.is_file() {
+        return Err(format!("{label} is not a file"));
+    }
+
+    Ok(file_path)
+}
+
 #[cfg(target_os = "macos")]
 fn write_file_paths_to_clipboard_macos(paths: Vec<String>) -> Result<(), String> {
     validate_existing_paths(&paths)?;
@@ -247,6 +261,69 @@ function run(argv) {
     }
 
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn write_image_file_to_clipboard_macos(path: String) -> Result<(), String> {
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+
+    let script = r#"
+ObjC.import('AppKit');
+ObjC.import('Foundation');
+
+function run(argv) {
+  const path = argv[0];
+  const pasteboard = $.NSPasteboard.generalPasteboard;
+  pasteboard.clearContents;
+
+  const fileUrl = $.NSURL.fileURLWithPath(path);
+  const image = $.NSImage.alloc.initWithContentsOfFile(path);
+  const objects = $.NSMutableArray.array;
+
+  objects.addObject(fileUrl);
+
+  if (image) {
+    objects.addObject(image);
+  }
+
+  const success = pasteboard.writeObjects(objects);
+
+  if (!success) {
+    throw new Error('Could not write image file to pasteboard');
+  }
+
+  return true;
+}
+"#;
+
+    let output = Command::new("osascript")
+        .arg("-l")
+        .arg("JavaScript")
+        .arg("-e")
+        .arg(script)
+        .arg(image_path)
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn write_image_file_to_clipboard(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        write_image_file_to_clipboard_macos(path)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        Err("Native image file clipboard copy is only implemented on macOS for now.".to_string())
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -685,6 +762,7 @@ pub fn run() {
             quit_app,
             get_active_app,
             import_image_file_to_assets,
+            write_image_file_to_clipboard,
             read_clipboard_file_paths,
             inspect_file_path,
             backup_file_to_assets,

@@ -2,6 +2,7 @@ import { readImage } from "@tauri-apps/plugin-clipboard-manager";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import type { Clip } from "../types";
 import { createAssetFilename, deleteAssetFile, getAssetPath } from "./assets";
+import { consumeSuppressedImageHash } from "./clipboardSuppression";
 import { hashBytes } from "./hash";
 import { saveAssetClip } from "./db";
 
@@ -125,6 +126,14 @@ export async function saveClipboardImage(options?: {
     ]);
 
     const imageHash = await hashBytes(rgba);
+
+    if (consumeSuppressedImageHash(imageHash)) {
+      return {
+        clip: null,
+        hash: imageHash,
+        skipped: true,
+      };
+    }
 
     if (options?.previousHash && imageHash === options.previousHash) {
       return {

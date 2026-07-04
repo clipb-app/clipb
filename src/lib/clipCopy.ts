@@ -3,6 +3,11 @@ import { Image as TauriImage } from "@tauri-apps/api/image";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { writeImage, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Clip } from "../types";
+import {
+  suppressClipboardCaptureForFilePaths,
+  suppressClipboardCaptureForImageHash,
+} from "./clipboardSuppression";
+import { hashBytes } from "./hash";
 
 function getImageMime(clip: Clip): string {
   if (clip.asset_mime?.startsWith("image/")) {
@@ -84,9 +89,23 @@ async function copyImageClip(clip: Clip): Promise<void> {
     throw new Error("No image asset path available for this clip");
   }
 
+  suppressClipboardCaptureForFilePaths([clip.asset_path]);
+
+  try {
+    await invoke<void>("write_image_file_to_clipboard", {
+      path: clip.asset_path,
+    });
+    return;
+  } catch (error) {
+    console.debug("Native image file clipboard copy failed:", error);
+  }
+
   const bytes = await readFile(clip.asset_path);
   const blob = bytesToBlob(bytes, getImageMime(clip));
   const decoded = await decodeImageToRgbaBytes(blob);
+  const imageHash = await hashBytes(decoded.rgba);
+
+  suppressClipboardCaptureForImageHash(imageHash);
 
   const tauriImage = await TauriImage.new(
     decoded.rgba,
