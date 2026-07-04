@@ -10,9 +10,11 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(target_os = "macos")]
+use std::process::Command;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -733,10 +735,17 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|app_handle, event| match event {
-        tauri::RunEvent::Reopen { .. } => {
-            let _ = show_main(app_handle);
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        {
+            if let tauri::RunEvent::Reopen { .. } = event {
+                let _ = show_main(app_handle);
+            }
         }
-        _ => {}
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (app_handle, event);
+        }
     });
 }

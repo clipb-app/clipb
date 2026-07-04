@@ -423,10 +423,11 @@ pnpm tauri build
 
 GitHub Actions workflows live in `.github/workflows`.
 
-- `app-ci.yml` runs on pull requests and pushes to `dev` or `main`.
+- `app-ci.yml` runs on pull requests and pushes to any branch.
 - `app-ci.yml` installs dependencies, runs tests, checks the current coverage baseline, builds the frontend, checks Rust formatting, and runs `cargo check`.
+- `app-ci.yml` also runs a Windows compile check on `windows-latest` so Windows support does not rely on a local Windows machine.
 - `app-release.yml` runs from a pushed version tag such as `v0.8.0`, or manually from GitHub Actions with a tag name.
-- `app-release.yml` builds Apple Silicon and Universal macOS release drafts using Tauri.
+- `app-release.yml` runs the release checks first, then builds Apple Silicon, Universal macOS, and Windows NSIS release drafts using Tauri.
 
 The CI coverage gate currently protects the existing baseline:
 
@@ -450,6 +451,48 @@ If the signing key is encrypted with a password, also add:
 ```text
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ```
+
+The value of `TAURI_SIGNING_PRIVATE_KEY` should be the contents of the private updater key file, not the path to the file:
+
+```text
+~/.tauri/clipb-updater.key
+```
+
+To publish a release through GitHub Actions:
+
+1. Merge release-ready code into `main`.
+2. Update app versions in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+3. Commit the version bump.
+4. Push a version tag:
+
+```bash
+git tag v0.8.0
+git push origin v0.8.0
+```
+
+GitHub then runs `app-release.yml`, creates a draft release, uploads the macOS and Windows bundles, uploads updater signatures, and uploads `latest.json` for the updater endpoint.
+
+For a Windows test build, use a prerelease tag:
+
+```bash
+git tag v0.8.0-beta.1
+git push origin v0.8.0-beta.1
+```
+
+Tags with a hyphen, such as `v0.8.0-beta.1`, are marked as prereleases by the release workflow. The workflow builds a Windows NSIS `.exe` installer that can be downloaded from the draft release, reviewed, and then published as a prerelease for testing.
+
+You can also run the same workflow manually from GitHub:
+
+1. Open the repository on GitHub.
+2. Go to **Actions**.
+3. Select **App Release**.
+4. Click **Run workflow**.
+5. Select the release-ready branch, usually `main`.
+6. Enter a tag name such as `v0.8.0`.
+
+If release asset upload fails with a token permission error, go to **Settings → Actions → General → Workflow permissions** and allow **Read and write permissions**.
+
+This CD workflow signs Tauri updater artifacts. It does not replace Apple Developer ID signing or notarization for Gatekeeper.
 
 ### Auto Updates
 
