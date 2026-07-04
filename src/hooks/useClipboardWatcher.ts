@@ -15,6 +15,7 @@ import {
   isSupportedImagePath,
 } from "../lib/imageFileImport";
 import { readNativeClipboardFilePaths } from "../lib/nativeClipboardFiles";
+import { consumeSuppressedFilePaths } from "../lib/clipboardSuppression";
 
 interface UseClipboardWatcherOptions {
   settings: AppSettings;
@@ -74,6 +75,11 @@ export function useClipboardWatcher({
 
         if (nativeFilePaths.length > 0) {
           const nativeFileKey = nativeFilePaths.join("\n");
+
+          if (consumeSuppressedFilePaths(nativeFilePaths)) {
+            lastSeenNativeFileKeyRef.current = nativeFileKey;
+            return;
+          }
 
           // Important:
           // If native file paths exist, do not continue to readImage().

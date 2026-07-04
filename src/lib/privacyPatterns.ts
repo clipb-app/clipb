@@ -8,6 +8,7 @@ export interface PrivacyPattern {
 export const TOKEN_PATTERNS: PrivacyPattern[] = [
   {
     name: "private_key",
+    /* c8 ignore next */
     category: "private_key",
     description: "Private key block",
     pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/,

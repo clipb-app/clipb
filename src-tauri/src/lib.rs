@@ -10,9 +10,11 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(target_os = "macos")]
+use std::process::Command;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -202,6 +204,20 @@ fn validate_existing_paths(paths: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(valid_paths)
 }
 
+fn validate_existing_file_path(path: &str, label: &str) -> Result<PathBuf, String> {
+    let file_path = PathBuf::from(path);
+
+    if !file_path.exists() {
+        return Err(format!("{label} does not exist"));
+    }
+
+    if !file_path.is_file() {
+        return Err(format!("{label} is not a file"));
+    }
+
+    Ok(file_path)
+}
+
 #[cfg(target_os = "macos")]
 fn write_file_paths_to_clipboard_macos(paths: Vec<String>) -> Result<(), String> {
     validate_existing_paths(&paths)?;
@@ -247,6 +263,116 @@ function run(argv) {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+fn write_image_file_to_clipboard_macos(path: String) -> Result<(), String> {
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+
+    let script = r#"
+ObjC.import('AppKit');
+ObjC.import('Foundation');
+
+function run(argv) {
+  const path = argv[0];
+  const pasteboard = $.NSPasteboard.generalPasteboard;
+  pasteboard.clearContents;
+
+  const fileUrl = $.NSURL.fileURLWithPath(path);
+  const image = $.NSImage.alloc.initWithContentsOfFile(path);
+  const objects = $.NSMutableArray.array;
+
+  objects.addObject(fileUrl);
+
+  if (image) {
+    objects.addObject(image);
+  }
+
+  const success = pasteboard.writeObjects(objects);
+
+  if (!success) {
+    throw new Error('Could not write image file to pasteboard');
+  }
+
+  return true;
+}
+"#;
+
+    let output = Command::new("osascript")
+        .arg("-l")
+        .arg("JavaScript")
+        .arg("-e")
+        .arg(script)
+        .arg(image_path)
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn write_image_file_to_clipboard_windows(path: String) -> Result<(), String> {
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+    let decoded = image::open(&image_path)
+        .map_err(|error| format!("Could not decode image file for clipboard: {error}"))?;
+    let rgba = decoded.to_rgba8();
+
+    let image_data = arboard::ImageData {
+        width: rgba.width() as usize,
+        height: rgba.height() as usize,
+        bytes: std::borrow::Cow::Owned(rgba.into_raw()),
+    };
+
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|error| format!("Could not open clipboard: {error}"))?;
+
+    clipboard
+        .set_image(image_data)
+        .map_err(|error| format!("Could not write image to clipboard: {error}"))
+}
+
+#[tauri::command]
+fn write_image_file_to_clipboard(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        write_image_file_to_clipboard_macos(path)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        write_image_file_to_clipboard_windows(path)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = path;
+        Err(
+            "Native image file clipboard copy is only implemented on macOS and Windows for now."
+                .to_string(),
+        )
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn write_file_paths_to_clipboard_windows(paths: Vec<String>) -> Result<(), String> {
+    use clipboard_win::{formats::FileList, Clipboard, Setter};
+
+    let valid_paths = validate_existing_paths(&paths)?;
+    let clipboard_paths = valid_paths
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+
+    let _clipboard = Clipboard::new_attempts(10)
+        .map_err(|error| format!("Could not open clipboard: {error}"))?;
+
+    FileList
+        .write_clipboard(clipboard_paths.as_slice())
+        .map_err(|error| format!("Could not write file paths to clipboard: {error}"))
+}
+
 #[tauri::command]
 fn write_file_paths_to_clipboard(paths: Vec<String>) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -254,10 +380,15 @@ fn write_file_paths_to_clipboard(paths: Vec<String>) -> Result<(), String> {
         write_file_paths_to_clipboard_macos(paths)
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        write_file_paths_to_clipboard_windows(paths)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = paths;
-        Err("Copying file references is only implemented on macOS for now.".to_string())
+        Err("Copying file references is only implemented on macOS and Windows for now.".to_string())
     }
 }
 
@@ -660,6 +791,7 @@ pub fn run() {
             quit_app,
             get_active_app,
             import_image_file_to_assets,
+            write_image_file_to_clipboard,
             read_clipboard_file_paths,
             inspect_file_path,
             backup_file_to_assets,
@@ -733,10 +865,17 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|app_handle, event| match event {
-        tauri::RunEvent::Reopen { .. } => {
-            let _ = show_main(app_handle);
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        {
+            if let tauri::RunEvent::Reopen { .. } = event {
+                let _ = show_main(app_handle);
+            }
         }
-        _ => {}
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (app_handle, event);
+        }
     });
 }

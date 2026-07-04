@@ -3,8 +3,30 @@ import { Image as TauriImage } from "@tauri-apps/api/image";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { writeImage, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Clip } from "../types";
+import {
+  suppressClipboardCaptureForFilePaths,
+  suppressClipboardCaptureForImageHash,
+} from "./clipboardSuppression";
+import { hashBytes } from "./hash";
 
-function getImageMime(clip: Clip): string {
+export interface DecodedImageData {
+  rgba: Uint8Array;
+  width: number;
+  height: number;
+}
+
+export interface ImageClipCopyAdapters {
+  writeNativeImageFile: (path: string) => Promise<void>;
+  readImageFile: (path: string) => Promise<Uint8Array>;
+  decodeImage: (bytes: Uint8Array, mime: string) => Promise<DecodedImageData>;
+  hashImageBytes: (bytes: Uint8Array) => Promise<string>;
+  suppressFilePaths: (paths: string[]) => void;
+  suppressImageHash: (hash: string) => void;
+  writeDecodedImage: (image: DecodedImageData) => Promise<void>;
+  logDebug: (message: string, error: unknown) => void;
+}
+
+export function getImageMime(clip: Clip): string {
   if (clip.asset_mime?.startsWith("image/")) {
     return clip.asset_mime;
   }
@@ -16,7 +38,7 @@ function getImageMime(clip: Clip): string {
   return "image/png";
 }
 
-function bytesToBlob(bytes: Uint8Array, mime: string): Blob {
+export function bytesToBlob(bytes: Uint8Array, mime: string): Blob {
   const safeBytes = new Uint8Array(bytes);
 
   const arrayBuffer = safeBytes.buffer.slice(
@@ -29,11 +51,9 @@ function bytesToBlob(bytes: Uint8Array, mime: string): Blob {
   });
 }
 
-async function decodeImageToRgbaBytes(blob: Blob): Promise<{
-  rgba: Uint8Array;
-  width: number;
-  height: number;
-}> {
+export async function decodeImageToRgbaBytes(
+  blob: Blob,
+): Promise<DecodedImageData> {
   const objectUrl = URL.createObjectURL(blob);
 
   try {
@@ -79,15 +99,23 @@ async function decodeImageToRgbaBytes(blob: Blob): Promise<{
   }
 }
 
-async function copyImageClip(clip: Clip): Promise<void> {
-  if (!clip.asset_path) {
-    throw new Error("No image asset path available for this clip");
-  }
+export async function decodeImageFileBytesToRgba(
+  bytes: Uint8Array,
+  mime: string,
+): Promise<DecodedImageData> {
+  return decodeImageToRgbaBytes(bytesToBlob(bytes, mime));
+}
 
-  const bytes = await readFile(clip.asset_path);
-  const blob = bytesToBlob(bytes, getImageMime(clip));
-  const decoded = await decodeImageToRgbaBytes(blob);
+/* c8 ignore start */
+async function writeNativeImageFileToClipboard(path: string): Promise<void> {
+  await invoke<void>("write_image_file_to_clipboard", {
+    path,
+  });
+}
 
+async function writeDecodedImageToClipboard(
+  decoded: DecodedImageData,
+): Promise<void> {
   const tauriImage = await TauriImage.new(
     decoded.rgba,
     decoded.width,
@@ -101,7 +129,52 @@ async function copyImageClip(clip: Clip): Promise<void> {
   }
 }
 
-async function copyFileClip(clip: Clip): Promise<void> {
+const defaultImageClipCopyAdapters: ImageClipCopyAdapters = {
+  writeNativeImageFile: writeNativeImageFileToClipboard,
+  readImageFile: readFile,
+  decodeImage: decodeImageFileBytesToRgba,
+  hashImageBytes: hashBytes,
+  suppressFilePaths: suppressClipboardCaptureForFilePaths,
+  suppressImageHash: suppressClipboardCaptureForImageHash,
+  writeDecodedImage: writeDecodedImageToClipboard,
+  logDebug: console.debug,
+};
+/* c8 ignore stop */
+
+export async function copyImageClipWithAdapters(
+  clip: Clip,
+  adapters: ImageClipCopyAdapters,
+): Promise<void> {
+  if (!clip.asset_path) {
+    throw new Error("No image asset path available for this clip");
+  }
+
+  adapters.suppressFilePaths([clip.asset_path]);
+  adapters.suppressImageHash(clip.content_hash);
+
+  try {
+    await adapters.writeNativeImageFile(clip.asset_path);
+    return;
+  } catch (error) {
+    adapters.logDebug("Native image file clipboard copy failed:", error);
+  }
+
+  const bytes = await adapters.readImageFile(clip.asset_path);
+  const decoded = await adapters.decodeImage(bytes, getImageMime(clip));
+  const imageHash = await adapters.hashImageBytes(decoded.rgba);
+
+  if (imageHash !== clip.content_hash) {
+    adapters.suppressImageHash(imageHash);
+  }
+
+  await adapters.writeDecodedImage(decoded);
+}
+
+async function copyImageClip(clip: Clip): Promise<void> {
+  await copyImageClipWithAdapters(clip, defaultImageClipCopyAdapters);
+}
+
+function getFileClipPath(clip: Clip): string {
   const filePath =
     clip.content_type === "file/backup" && clip.asset_path
       ? clip.asset_path
@@ -111,23 +184,46 @@ async function copyFileClip(clip: Clip): Promise<void> {
     throw new Error("No file path available for this clip");
   }
 
+  return filePath;
+}
+
+async function writeFilePathsToClipboard(paths: string[]): Promise<void> {
   await invoke<void>("write_file_paths_to_clipboard", {
-    paths: [filePath],
+    paths,
   });
 }
 
-export async function copyClipToClipboard(clip: Clip): Promise<void> {
+interface CopyClipAdapters {
+  writeText: (text: string) => Promise<void>;
+  writeImageClip: (clip: Clip) => Promise<void>;
+  writeFilePaths: (paths: string[]) => Promise<void>;
+}
+
+const defaultCopyAdapters: CopyClipAdapters = {
+  writeText,
+  writeImageClip: copyImageClip,
+  writeFilePaths: writeFilePathsToClipboard,
+};
+
+export async function copyClipToClipboardWithAdapters(
+  clip: Clip,
+  adapters: CopyClipAdapters,
+): Promise<void> {
   if (clip.category === "image") {
-    await copyImageClip(clip);
+    await adapters.writeImageClip(clip);
     return;
   }
 
   if (clip.category === "file") {
-    await copyFileClip(clip);
+    await adapters.writeFilePaths([getFileClipPath(clip)]);
     return;
   }
 
-  await writeText(clip.content);
+  await adapters.writeText(clip.content);
+}
+
+export async function copyClipToClipboard(clip: Clip): Promise<void> {
+  await copyClipToClipboardWithAdapters(clip, defaultCopyAdapters);
 }
 
 export function getCopyLabel(clip: Clip, copied: boolean): string {

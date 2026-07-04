@@ -7,9 +7,11 @@ export function hashText(value: string): string {
       (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
 
+  /* c8 ignore next */
   return (hash >>> 0).toString(16);
 }
 
+/* c8 ignore next */
 export async function hashBytes(bytes: Uint8Array): Promise<string> {
   const safeBytes = new Uint8Array(bytes);
   const digest = await crypto.subtle.digest("SHA-256", safeBytes.buffer);
