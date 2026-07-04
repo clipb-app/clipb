@@ -101,7 +101,7 @@ async function copyImageClip(clip: Clip): Promise<void> {
   }
 }
 
-async function copyFileClip(clip: Clip): Promise<void> {
+function getFileClipPath(clip: Clip): string {
   const filePath =
     clip.content_type === "file/backup" && clip.asset_path
       ? clip.asset_path
@@ -111,23 +111,46 @@ async function copyFileClip(clip: Clip): Promise<void> {
     throw new Error("No file path available for this clip");
   }
 
+  return filePath;
+}
+
+async function writeFilePathsToClipboard(paths: string[]): Promise<void> {
   await invoke<void>("write_file_paths_to_clipboard", {
-    paths: [filePath],
+    paths,
   });
 }
 
-export async function copyClipToClipboard(clip: Clip): Promise<void> {
+interface CopyClipAdapters {
+  writeText: (text: string) => Promise<void>;
+  writeImageClip: (clip: Clip) => Promise<void>;
+  writeFilePaths: (paths: string[]) => Promise<void>;
+}
+
+const defaultCopyAdapters: CopyClipAdapters = {
+  writeText,
+  writeImageClip: copyImageClip,
+  writeFilePaths: writeFilePathsToClipboard,
+};
+
+export async function copyClipToClipboardWithAdapters(
+  clip: Clip,
+  adapters: CopyClipAdapters,
+): Promise<void> {
   if (clip.category === "image") {
-    await copyImageClip(clip);
+    await adapters.writeImageClip(clip);
     return;
   }
 
   if (clip.category === "file") {
-    await copyFileClip(clip);
+    await adapters.writeFilePaths([getFileClipPath(clip)]);
     return;
   }
 
-  await writeText(clip.content);
+  await adapters.writeText(clip.content);
+}
+
+export async function copyClipToClipboard(clip: Clip): Promise<void> {
+  await copyClipToClipboardWithAdapters(clip, defaultCopyAdapters);
 }
 
 export function getCopyLabel(clip: Clip, copied: boolean): string {
