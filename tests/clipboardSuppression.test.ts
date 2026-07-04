@@ -37,3 +37,15 @@ test("expires old clipboard suppressions", () => {
   assert.equal(consumeSuppressedFilePaths(["/tmp/old.png"], 10_000), false);
   assert.equal(consumeSuppressedImageHash("old-hash", 10_000), false);
 });
+
+test("ignores empty clipboard suppression keys", () => {
+  clearClipboardCaptureSuppressions();
+
+  suppressClipboardCaptureForFilePaths([], 1_000);
+  suppressClipboardCaptureForImageHash(null, 1_000);
+  suppressClipboardCaptureForImageHash(undefined, 1_000);
+
+  assert.equal(consumeSuppressedFilePaths([], 1_100), false);
+  assert.equal(consumeSuppressedImageHash(null, 1_100), false);
+  assert.equal(consumeSuppressedImageHash(undefined, 1_100), false);
+});
