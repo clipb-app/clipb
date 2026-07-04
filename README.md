@@ -432,7 +432,14 @@ The updater signing key was generated outside the repo at:
 Do not commit or share the private key. Use it only when building release artifacts:
 
 ```bash
-TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/clipb-updater.key" pnpm tauri build
+TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/clipb-updater.key" pnpm tauri build
+```
+
+Release builds can target Apple Silicon and Universal macOS separately:
+
+```bash
+TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/clipb-updater.key" pnpm tauri build --target aarch64-apple-darwin
+TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/clipb-updater.key" pnpm tauri build --target universal-apple-darwin
 ```
 
 Each updater-enabled release needs these files attached to GitHub Releases:
@@ -446,17 +453,17 @@ Example `latest.json`:
 
 ```json
 {
-  "version": "0.6.1",
+  "version": "0.7.0",
   "notes": "ClipB update notes",
   "pub_date": "2026-07-04T00:00:00Z",
   "platforms": {
     "darwin-aarch64": {
       "signature": "contents of ClipB.app.tar.gz.sig",
-      "url": "https://github.com/clipb-app/clipb/releases/download/v0.6.1/ClipB.app.tar.gz"
+      "url": "https://github.com/clipb-app/clipb/releases/download/v0.7.0/ClipB.app.tar.gz"
     },
     "darwin-x86_64": {
       "signature": "contents of ClipB.app.tar.gz.sig",
-      "url": "https://github.com/clipb-app/clipb/releases/download/v0.6.1/ClipB.app.tar.gz"
+      "url": "https://github.com/clipb-app/clipb/releases/download/v0.7.0/ClipB.app.tar.gz"
     }
   }
 }
