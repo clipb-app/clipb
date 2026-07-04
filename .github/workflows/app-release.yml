@@ -19,8 +19,56 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-checks:
+    name: Release Checks
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Check coverage baseline
+        run: pnpm run test:coverage:ci
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Check Rust formatting
+        run: cargo fmt --check
+        working-directory: src-tauri
+
+      - name: Check Rust
+        run: cargo check --locked
+        working-directory: src-tauri
+
   macos-release:
     name: Build macOS ${{ matrix.name }}
+    needs: release-checks
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -71,4 +119,6 @@ jobs:
           releaseBody: See the release notes and installer assets below.
           releaseDraft: true
           prerelease: false
+          retryAttempts: 2
+          uploadUpdaterJson: true
           args: ${{ matrix.args }}
