@@ -22,10 +22,8 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 #[cfg(desktop)]
 use tauri_plugin_updater::UpdaterExt;
 
-const PUBLIC_UPDATE_ENDPOINT: &str =
-    "https://github.com/clipb-app/clipb/releases/latest/download/latest.json";
-const BETA_UPDATE_ENDPOINT: &str =
-    "https://github.com/clipb-app/clipb/releases/download/beta/beta.json";
+const PUBLIC_UPDATE_ENDPOINT: &str = "https://getclipb.com/latest.json";
+const BETA_UPDATE_ENDPOINT: &str = "https://getclipb.com/beta.json";
 
 #[cfg(target_os = "macos")]
 fn show_app_in_dock(app: &tauri::AppHandle) -> Result<(), String> {

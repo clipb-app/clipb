@@ -496,13 +496,26 @@ This CD workflow signs Tauri updater artifacts. It does not replace Apple Develo
 
 ### Auto Updates
 
-ClipB checks GitHub Releases for signed update metadata at:
+ClipB checks `getclipb.com` for signed update metadata. The public channel uses:
 
 ```text
-https://github.com/clipb-app/clipb/releases/latest/download/latest.json
+https://getclipb.com/latest.json
 ```
 
-If you publish beta builds as GitHub prereleases, confirm the `latest` URL resolves to the release you expect. For prerelease-only update channels, host `latest.json` from a stable URL such as `https://getclipb.com/latest.json` and update `tauri.conf.json`.
+The beta opt-in channel uses:
+
+```text
+https://getclipb.com/beta.json
+```
+
+Those URLs should serve or redirect to valid Tauri updater metadata. The current landing-page setup uses domain-level redirects:
+
+- `/latest.json` redirects to the latest public GitHub release updater metadata.
+- `/beta.json` redirects to the selected beta GitHub release updater metadata, such as `v0.8.0-beta.4`.
+
+When publishing a new beta, update the landing page redirect for `/beta.json` to the new beta release's `latest.json` asset. When publishing a new stable release, GitHub's `releases/latest` URL should resolve automatically after the release is published as non-prerelease.
+
+Existing installed apps keep checking the endpoint they were built with. To move users from the old GitHub endpoint to `getclipb.com`, publish one transition release where the old GitHub `latest.json` points to a build that contains the new domain endpoints.
 
 The updater signing key was generated outside the repo at:
 
