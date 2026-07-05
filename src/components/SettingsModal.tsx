@@ -300,6 +300,29 @@ export function SettingsModal({
               />
             </label>
 
+            <label className="setting-row">
+              <div>
+                <strong>Beta release updates</strong>
+                <span>
+                  Opt in to beta builds. Turn this off to check the latest public
+                  release instead.
+                </span>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={settings.updateChannel === "beta"}
+                title="Use beta release updates"
+                aria-label="Use beta release updates"
+                onChange={(event) =>
+                  updateSetting({
+                    ...settings,
+                    updateChannel: event.target.checked ? "beta" : "public",
+                  })
+                }
+              />
+            </label>
+
             <div className="settings-actions-grid settings-update-actions">
               <button
                 className="settings-action-button"

@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    Manager, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 use serde::Serialize;
@@ -18,6 +18,12 @@ use std::process::Command;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+#[cfg(desktop)]
+use tauri_plugin_updater::UpdaterExt;
+
+const PUBLIC_UPDATE_ENDPOINT: &str = "https://getclipb.com/latest.json";
+const BETA_UPDATE_ENDPOINT: &str = "https://getclipb.com/beta.json";
 
 #[cfg(target_os = "macos")]
 fn show_app_in_dock(app: &tauri::AppHandle) -> Result<(), String> {
@@ -180,6 +186,63 @@ fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     show_main(&app)
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClipBUpdateMetadata {
+    rid: u32,
+    current_version: String,
+    version: String,
+    date: Option<String>,
+    body: Option<String>,
+    raw_json: serde_json::Value,
+}
+
+fn update_endpoint_for_channel(channel: &str) -> &'static str {
+    if channel == "beta" {
+        BETA_UPDATE_ENDPOINT
+    } else {
+        PUBLIC_UPDATE_ENDPOINT
+    }
+}
+
+#[tauri::command(rename_all = "snake_case")]
+async fn check_for_clipb_update<R: tauri::Runtime>(
+    webview: Webview<R>,
+    channel: String,
+    allow_downgrades: bool,
+) -> Result<Option<ClipBUpdateMetadata>, String> {
+    let endpoint = url::Url::parse(update_endpoint_for_channel(&channel))
+        .map_err(|error| error.to_string())?;
+
+    let mut builder = webview
+        .updater_builder()
+        .endpoints(vec![endpoint])
+        .map_err(|error| error.to_string())?
+        .timeout(Duration::from_millis(15_000));
+
+    if allow_downgrades {
+        builder = builder.version_comparator(|current, update| update.version != current);
+    }
+
+    let updater = builder.build().map_err(|error| error.to_string())?;
+    let update = updater.check().await.map_err(|error| error.to_string())?;
+
+    let Some(update) = update else {
+        return Ok(None);
+    };
+
+    let metadata = ClipBUpdateMetadata {
+        current_version: update.current_version.clone(),
+        version: update.version.clone(),
+        date: update.date.map(|date| date.to_string()),
+        body: update.body.clone(),
+        raw_json: update.raw_json.clone(),
+        rid: webview.resources_table().add(update),
+    };
+
+    Ok(Some(metadata))
+}
+
 // -----------------------------------------------------------------------------
 // Clipboard commands
 // -----------------------------------------------------------------------------
@@ -202,6 +265,20 @@ fn validate_existing_paths(paths: &[String]) -> Result<Vec<PathBuf>, String> {
     }
 
     Ok(valid_paths)
+}
+
+fn validate_existing_file_path(path: &str, label: &str) -> Result<PathBuf, String> {
+    let file_path = PathBuf::from(path);
+
+    if !file_path.exists() {
+        return Err(format!("{label} does not exist"));
+    }
+
+    if !file_path.is_file() {
+        return Err(format!("{label} is not a file"));
+    }
+
+    Ok(file_path)
 }
 
 #[cfg(target_os = "macos")]
@@ -247,6 +324,110 @@ function run(argv) {
     }
 
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn write_image_file_to_clipboard_macos(path: String) -> Result<(), String> {
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+
+    let script = r#"
+ObjC.import('AppKit');
+ObjC.import('Foundation');
+
+function run(argv) {
+  const path = argv[0];
+  const pasteboard = $.NSPasteboard.generalPasteboard;
+  pasteboard.clearContents;
+
+  const fileUrl = $.NSURL.fileURLWithPath(path);
+  const image = $.NSImage.alloc.initWithContentsOfFile(path);
+  const objects = $.NSMutableArray.array;
+
+  objects.addObject(fileUrl);
+
+  if (image) {
+    objects.addObject(image);
+  }
+
+  const success = pasteboard.writeObjects(objects);
+
+  if (!success) {
+    throw new Error('Could not write image file to pasteboard');
+  }
+
+  return true;
+}
+"#;
+
+    let output = Command::new("osascript")
+        .arg("-l")
+        .arg("JavaScript")
+        .arg("-e")
+        .arg(script)
+        .arg(image_path)
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn write_image_file_to_clipboard_windows(path: String) -> Result<(), String> {
+    use clipboard_win::{formats::FileList, Clipboard, Setter};
+
+    let image_path = validate_existing_file_path(&path, "Image file")?;
+    let decoded = image::open(&image_path)
+        .map_err(|error| format!("Could not decode image file for clipboard: {error}"))?;
+    let rgba = decoded.to_rgba8();
+    let clipboard_paths = vec![image_path.to_string_lossy().into_owned()];
+
+    let image_data = arboard::ImageData {
+        width: rgba.width() as usize,
+        height: rgba.height() as usize,
+        bytes: std::borrow::Cow::Owned(rgba.into_raw()),
+    };
+
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|error| format!("Could not open clipboard: {error}"))?;
+
+    clipboard
+        .set_image(image_data)
+        .map_err(|error| format!("Could not write image to clipboard: {error}"))?;
+    drop(clipboard);
+
+    // Explorer/Desktop paste needs a file-list clipboard format in addition to image pixels.
+    let _clipboard = Clipboard::new_attempts(10)
+        .map_err(|error| format!("Could not open clipboard for image file reference: {error}"))?;
+
+    FileList
+        .write_clipboard(clipboard_paths.as_slice())
+        .map_err(|error| format!("Could not write image file reference to clipboard: {error}"))
+}
+
+#[tauri::command]
+fn write_image_file_to_clipboard(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        write_image_file_to_clipboard_macos(path)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        write_image_file_to_clipboard_windows(path)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = path;
+        Err(
+            "Native image file clipboard copy is only implemented on macOS and Windows for now."
+                .to_string(),
+        )
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -685,6 +866,8 @@ pub fn run() {
             quit_app,
             get_active_app,
             import_image_file_to_assets,
+            check_for_clipb_update,
+            write_image_file_to_clipboard,
             read_clipboard_file_paths,
             inspect_file_path,
             backup_file_to_assets,

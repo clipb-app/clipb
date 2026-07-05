@@ -4,6 +4,8 @@ export type RetentionDays = "never" | "7" | "30" | "90" | "180" | "365";
 
 export type ThemeMode = "system" | "light" | "dark";
 
+export type UpdateChannel = "public" | "beta";
+
 export type ThemePalette =
   | "clipb"
   | "paper-mono"
@@ -63,6 +65,7 @@ export interface AppSettings {
   themePalette: ThemePalette;
   launchOnStartup: boolean;
   checkForUpdatesAutomatically: boolean;
+  updateChannel: UpdateChannel;
 
   minClipLength: number;
   maxClipLength: number;

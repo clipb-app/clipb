@@ -1,9 +1,19 @@
+import { invoke } from "@tauri-apps/api/core";
 import {
-  check,
   type DownloadEvent,
-  type Update,
+  Update,
 } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import type { UpdateChannel } from "../types";
+
+interface UpdateMetadata {
+  rid: number;
+  currentVersion: string;
+  version: string;
+  date?: string;
+  body?: string;
+  rawJson: Record<string, unknown>;
+}
 
 export interface UpdateInstallProgress {
   downloaded: number;
@@ -11,8 +21,15 @@ export interface UpdateInstallProgress {
   percent?: number;
 }
 
-export async function checkForClipBUpdate(): Promise<Update | null> {
-  return check({ timeout: 15_000 });
+export async function checkForClipBUpdate(
+  channel: UpdateChannel,
+): Promise<Update | null> {
+  const metadata = await invoke<UpdateMetadata | null>("check_for_clipb_update", {
+    channel,
+    allow_downgrades: channel === "public",
+  });
+
+  return metadata ? new Update(metadata) : null;
 }
 
 export async function installClipBUpdate(

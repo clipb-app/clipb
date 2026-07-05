@@ -1,7 +1,7 @@
 {
   "name": "clipb-app",
   "private": true,
-  "version": "0.8.0-beta.1",
+  "version": "0.8.0-beta.6",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "test": "node --test scripts/run-tests.mjs",
     "test:coverage": "c8 --reporter=text --include='src/lib/**/*.ts' node --test scripts/run-tests.mjs",
-    "test:coverage:ci": "c8 --check-coverage --lines 80 --branches 75 --functions 75 --statements 80 --reporter=text --include='src/lib/**/*.ts' node --test scripts/run-tests.mjs",
+    "test:coverage:ci": "c8 --check-coverage --per-file --lines 80 --branches 80 --functions 80 --statements 80 --reporter=text --include='src/lib/**/*.ts' node --test scripts/run-tests.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

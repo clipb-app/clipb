@@ -10,6 +10,7 @@ import type {
   RetentionDays,
   ThemeMode,
   ThemePalette,
+  UpdateChannel,
   ClipBArchiveClip,
   ClipBArchiveClipTag,
   ClipBArchiveTag,
@@ -105,6 +106,16 @@ function getStringArraySetting(
   }
 }
 
+function getUpdateChannelSetting(
+  map: Map<string, string>,
+  key: string,
+  fallback: UpdateChannel,
+): UpdateChannel {
+  const value = map.get(key);
+
+  return value === "beta" || value === "public" ? value : fallback;
+}
+
 async function initDb(db: Db) {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS clips (
@@ -189,6 +200,14 @@ async function initDb(db: Db) {
       "check_for_updates_automatically",
       String(DEFAULT_SETTINGS.checkForUpdatesAutomatically),
     ],
+  );
+
+  await db.execute(
+    `
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["update_channel", DEFAULT_SETTINGS.updateChannel],
   );
 
   await db.execute(
@@ -704,6 +723,12 @@ export async function getAppSettings(): Promise<AppSettings> {
       DEFAULT_SETTINGS.checkForUpdatesAutomatically,
     ),
 
+    updateChannel: getUpdateChannelSetting(
+      map,
+      "update_channel",
+      DEFAULT_SETTINGS.updateChannel,
+    ),
+
     minClipLength: getNumberSetting(
       map,
       "min_clip_length",
@@ -825,6 +850,14 @@ export async function updateAppSettings(settings: AppSettings): Promise<void> {
       "check_for_updates_automatically",
       String(settings.checkForUpdatesAutomatically),
     ],
+  );
+
+  await db.execute(
+    `
+    INSERT OR REPLACE INTO settings (key, value)
+    VALUES (?, ?);
+  `,
+    ["update_channel", settings.updateChannel],
   );
 
   await db.execute(

@@ -4,8 +4,13 @@ import { detectClipCategory } from "../src/lib/clipDetection";
 
 test("detects direct URLs and URLs inside copied text", () => {
   assert.equal(detectClipCategory("https://clipb.app"), "url");
+  assert.equal(detectClipCategory("www.clipb.app/download"), "url");
   assert.equal(
     detectClipCategory("Useful reference: www.example.com/docs"),
+    "url",
+  );
+  assert.equal(
+    detectClipCategory("Read https://example.com/docs before shipping."),
     "url",
   );
 });
@@ -22,6 +27,13 @@ test("detects common code snippets", () => {
   );
 
   assert.equal(detectClipCategory("git status --short"), "code");
+  assert.equal(
+    detectClipCategory(`first line
+second line {
+third line => value`),
+    "code",
+  );
+  assert.equal(detectClipCategory("let x"), "text");
 });
 
 test("keeps ordinary prose as text", () => {
