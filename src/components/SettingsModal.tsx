@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+import { getName, getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Download,
+  ExternalLink,
+  Info,
   MonitorUp,
   Palette,
   RefreshCw,
@@ -57,6 +61,19 @@ const pauseOptions = [
   { label: "1 hour", milliseconds: 60 * 60 * 1000 },
 ];
 
+const appInfoLinks = [
+  { label: "Website", url: "https://getclipb.com" },
+  { label: "Source", url: "https://github.com/clipb-app/clipb" },
+  {
+    label: "Privacy",
+    url: "https://github.com/clipb-app/clipb/blob/main/PRIVACY.md",
+  },
+  {
+    label: "License",
+    url: "https://github.com/clipb-app/clipb/blob/main/LICENSE.md",
+  },
+];
+
 export function SettingsModal({
   open,
   settings,
@@ -71,6 +88,10 @@ export function SettingsModal({
   checkingForUpdates,
 }: SettingsModalProps) {
   const [ignoredAppInput, setIgnoredAppInput] = useState("");
+  const [appInfo, setAppInfo] = useState({
+    name: "ClipB",
+    version: "Loading...",
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -87,6 +108,40 @@ export function SettingsModal({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+
+    async function loadAppInfo() {
+      try {
+        const [name, version] = await Promise.all([getName(), getVersion()]);
+
+        if (!cancelled) {
+          setAppInfo({
+            name: name || "ClipB",
+            version: version || "Unavailable",
+          });
+        }
+      } catch (error) {
+        console.error("Could not load app information", error);
+
+        if (!cancelled) {
+          setAppInfo({
+            name: "ClipB",
+            version: "Unavailable",
+          });
+        }
+      }
+    }
+
+    void loadAppInfo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -139,6 +194,17 @@ export function SettingsModal({
   async function updateSetting(nextSettings: AppSettings) {
     await onSaveSettings(nextSettings);
   }
+
+  async function openExternalUrl(url: string) {
+    try {
+      await openUrl(url);
+    } catch (error) {
+      console.error("Could not open app information link", error);
+    }
+  }
+
+  const updateChannelLabel =
+    settings.updateChannel === "beta" ? "Beta releases" : "Public releases";
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose} role="presentation">
@@ -782,6 +848,73 @@ export function SettingsModal({
               <Trash2 size={17} />
               Clear all clips
             </button>
+          </section>
+
+          <section className="settings-section settings-app-info">
+            <div className="section-title-row">
+              <div>
+                <h3>App information</h3>
+                <p>Version, update channel, privacy, and project links.</p>
+              </div>
+
+              <div className="section-icon">
+                <Info size={18} />
+              </div>
+            </div>
+
+            <dl className="app-info-grid">
+              <div>
+                <dt>App</dt>
+                <dd>{appInfo.name}</dd>
+              </div>
+
+              <div>
+                <dt>Version</dt>
+                <dd>{appInfo.version}</dd>
+              </div>
+
+              <div>
+                <dt>Update channel</dt>
+                <dd>{updateChannelLabel}</dd>
+              </div>
+
+              <div>
+                <dt>Automatic checks</dt>
+                <dd>
+                  {settings.checkForUpdatesAutomatically ? "Enabled" : "Off"}
+                </dd>
+              </div>
+
+              <div>
+                <dt>Storage</dt>
+                <dd>Local SQLite database</dd>
+              </div>
+
+              <div>
+                <dt>License</dt>
+                <dd>AGPL-3.0-or-later</dd>
+              </div>
+            </dl>
+
+            <div className="app-info-links">
+              {appInfoLinks.map((link) => (
+                <button
+                  type="button"
+                  key={link.url}
+                  className="app-info-link"
+                  onClick={() => openExternalUrl(link.url)}
+                  title={`Open ${link.label}`}
+                  aria-label={`Open ${link.label}`}
+                >
+                  <ExternalLink size={15} aria-hidden="true" />
+                  {link.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="settings-note">
+              Clipboard history stays on this device unless you export it.
+            </div>
           </section>
         </div>
       </section>

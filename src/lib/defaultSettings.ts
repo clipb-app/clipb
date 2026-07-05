@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   watchClipboard: true,
   themeMode: "system",
   themePalette: "clipb",
-  launchOnStartup: false,
+  launchOnStartup: true,
   /* c8 ignore next */
   checkForUpdatesAutomatically: true,
   updateChannel: "public",

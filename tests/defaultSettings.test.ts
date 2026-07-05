@@ -2,14 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_SETTINGS } from "../src/lib/defaultSettings";
 
-test("default settings define conservative local-first behavior", () => {
+test("default settings define local-first behavior", () => {
   assert.deepEqual(DEFAULT_SETTINGS, {
     historyRetentionDays: "never",
     protectPinnedClips: true,
     watchClipboard: true,
     themeMode: "system",
     themePalette: "clipb",
-    launchOnStartup: false,
+    launchOnStartup: true,
     checkForUpdatesAutomatically: true,
     updateChannel: "public",
     minClipLength: 2,
