@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    Manager, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 use serde::Serialize;
@@ -18,6 +18,14 @@ use std::process::Command;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+#[cfg(desktop)]
+use tauri_plugin_updater::UpdaterExt;
+
+const PUBLIC_UPDATE_ENDPOINT: &str =
+    "https://github.com/clipb-app/clipb/releases/latest/download/latest.json";
+const BETA_UPDATE_ENDPOINT: &str =
+    "https://github.com/clipb-app/clipb/releases/download/beta/beta.json";
 
 #[cfg(target_os = "macos")]
 fn show_app_in_dock(app: &tauri::AppHandle) -> Result<(), String> {
@@ -178,6 +186,63 @@ fn toggle_quick(app: &tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     show_main(&app)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClipBUpdateMetadata {
+    rid: u32,
+    current_version: String,
+    version: String,
+    date: Option<String>,
+    body: Option<String>,
+    raw_json: serde_json::Value,
+}
+
+fn update_endpoint_for_channel(channel: &str) -> &'static str {
+    if channel == "beta" {
+        BETA_UPDATE_ENDPOINT
+    } else {
+        PUBLIC_UPDATE_ENDPOINT
+    }
+}
+
+#[tauri::command(rename_all = "snake_case")]
+async fn check_for_clipb_update<R: tauri::Runtime>(
+    webview: Webview<R>,
+    channel: String,
+    allow_downgrades: bool,
+) -> Result<Option<ClipBUpdateMetadata>, String> {
+    let endpoint = url::Url::parse(update_endpoint_for_channel(&channel))
+        .map_err(|error| error.to_string())?;
+
+    let mut builder = webview
+        .updater_builder()
+        .endpoints(vec![endpoint])
+        .map_err(|error| error.to_string())?
+        .timeout(Duration::from_millis(15_000));
+
+    if allow_downgrades {
+        builder = builder.version_comparator(|current, update| update.version != current);
+    }
+
+    let updater = builder.build().map_err(|error| error.to_string())?;
+    let update = updater.check().await.map_err(|error| error.to_string())?;
+
+    let Some(update) = update else {
+        return Ok(None);
+    };
+
+    let metadata = ClipBUpdateMetadata {
+        current_version: update.current_version.clone(),
+        version: update.version.clone(),
+        date: update.date.map(|date| date.to_string()),
+        body: update.body.clone(),
+        raw_json: update.raw_json.clone(),
+        rid: webview.resources_table().add(update),
+    };
+
+    Ok(Some(metadata))
 }
 
 // -----------------------------------------------------------------------------
@@ -803,6 +868,7 @@ pub fn run() {
             quit_app,
             get_active_app,
             import_image_file_to_assets,
+            check_for_clipb_update,
             write_image_file_to_clipboard,
             read_clipboard_file_paths,
             inspect_file_path,

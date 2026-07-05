@@ -290,6 +290,7 @@ export default function App() {
         void handleCheckForUpdates({
           automatic: true,
           silentWhenCurrent: true,
+          updateChannel: mergedSettings.updateChannel,
         });
       }
     }
@@ -341,24 +342,31 @@ export default function App() {
   async function handleCheckForUpdates(options?: {
     automatic?: boolean;
     silentWhenCurrent?: boolean;
+    updateChannel?: AppSettings["updateChannel"];
   }) {
     if (updateCheckInFlightRef.current) return;
+
+    const updateChannel = options?.updateChannel ?? settings.updateChannel;
+    const releaseLabel = updateChannel === "beta" ? "beta" : "public";
 
     updateCheckInFlightRef.current = true;
     setCheckingForUpdates(true);
 
     if (!options?.automatic) {
-      showToast("Checking for updates", "Looking for signed ClipB releases.");
+      showToast(
+        "Checking for updates",
+        `Looking for signed ClipB ${releaseLabel} releases.`,
+      );
     }
 
     try {
-      const update = await checkForClipBUpdate();
+      const update = await checkForClipBUpdate(updateChannel);
 
       if (!update) {
         if (!options?.silentWhenCurrent) {
           showToast(
             "ClipB is up to date",
-            "You are running the latest available version.",
+            `You are running the latest ${releaseLabel} version.`,
             "success",
           );
         }
@@ -368,7 +376,7 @@ export default function App() {
 
       const releaseNotes = update.body ? `\n\n${update.body}` : "";
       const shouldInstall = await confirm(
-        `ClipB ${update.version} is available. You are currently running ${update.currentVersion}.${releaseNotes}`,
+        `ClipB ${update.version} is available on the ${releaseLabel} channel. You are currently running ${update.currentVersion}.${releaseNotes}`,
         {
           title: "Update available",
           kind: "info",

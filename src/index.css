@@ -1868,7 +1868,13 @@ button:active {
 }
 
 .settings-update-actions {
+  display: flex;
+  justify-content: flex-end;
   margin-top: 14px;
+}
+
+.settings-update-actions .settings-action-button {
+  min-width: 180px;
 }
 
 .settings-action-button,
@@ -2061,6 +2067,14 @@ button:active {
     grid-template-columns: 1fr;
   }
 
+  .settings-update-actions {
+    justify-content: stretch;
+  }
+
+  .settings-update-actions .settings-action-button {
+    width: 100%;
+  }
+
   .setting-row {
     align-items: flex-start;
   }
@@ -2119,9 +2133,9 @@ button:active {
 }
 
 .quick-window {
-  width: calc(100vw - 16px);
-  height: calc(100vh - 16px);
-  margin: 8px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
   overflow: hidden;
   isolation: isolate;
   display: grid;
@@ -2130,7 +2144,7 @@ button:active {
   padding: 18px;
   border: 1px solid var(--border-strong);
   border-radius: 24px;
-  box-shadow: var(--modal-shadow);
+  box-shadow: none;
   color: var(--text-soft);
   background:
     radial-gradient(circle at top left, var(--bg-glow), transparent 28rem),

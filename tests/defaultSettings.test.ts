@@ -11,6 +11,7 @@ test("default settings define conservative local-first behavior", () => {
     themePalette: "clipb",
     launchOnStartup: false,
     checkForUpdatesAutomatically: true,
+    updateChannel: "public",
     minClipLength: 2,
     maxClipLength: 50000,
     ignoreSensitiveClips: true,

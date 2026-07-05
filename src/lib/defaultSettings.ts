@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launchOnStartup: false,
   /* c8 ignore next */
   checkForUpdatesAutomatically: true,
+  updateChannel: "public",
 
   minClipLength: 2,
   maxClipLength: 50000,
