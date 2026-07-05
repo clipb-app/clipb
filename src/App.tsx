@@ -264,9 +264,20 @@ export default function App() {
     async function boot() {
       const loadedSettings = await getAppSettings();
 
-      const launchOnStartup = await getLaunchOnStartupEnabled().catch(() => {
-        return loadedSettings.launchOnStartup;
-      });
+      let launchOnStartup = loadedSettings.launchOnStartup;
+
+      try {
+        const systemLaunchOnStartup = await getLaunchOnStartupEnabled();
+
+        if (loadedSettings.launchOnStartup && !systemLaunchOnStartup) {
+          await setLaunchOnStartup(true);
+          launchOnStartup = true;
+        } else {
+          launchOnStartup = systemLaunchOnStartup;
+        }
+      } catch {
+        launchOnStartup = loadedSettings.launchOnStartup;
+      }
 
       const mergedSettings = {
         ...loadedSettings,
