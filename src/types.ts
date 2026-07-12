@@ -7,6 +7,7 @@ export type ThemeMode = "system" | "light" | "dark";
 export type UpdateChannel = "public" | "beta";
 
 export type ThemePalette =
+  | "system-neutral"
   | "clipb"
   | "paper-mono"
   | "ocean-mint"

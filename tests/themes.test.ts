@@ -11,8 +11,9 @@ import {
 } from "../src/lib/themes";
 
 test("theme palettes include the default palette and unique values", () => {
-  assert.equal(DEFAULT_SETTINGS.themePalette, "clipb");
+  assert.equal(DEFAULT_SETTINGS.themePalette, "system-neutral");
   assert.equal(isThemePalette(DEFAULT_SETTINGS.themePalette), true);
+  assert.equal(isThemePalette("clipb"), true);
   assert.equal(isThemePalette("sakura-pink"), true);
   assert.equal(isThemePalette("unknown-theme"), false);
   assert.equal(isThemePalette(null), false);
@@ -21,7 +22,7 @@ test("theme palettes include the default palette and unique values", () => {
   const uniqueValues = new Set(THEME_PALETTE_VALUES);
 
   assert.equal(uniqueValues.size, THEME_PALETTE_VALUES.length);
-  assert.ok(THEME_PALETTE_OPTIONS.length >= 7);
+  assert.ok(THEME_PALETTE_OPTIONS.length >= 8);
 });
 
 test("theme palette options provide light and dark swatches", () => {

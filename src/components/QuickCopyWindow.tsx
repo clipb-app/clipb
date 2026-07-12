@@ -5,6 +5,7 @@ import { formatTime, toDayKey } from "../lib/dates";
 import { getAppSettings, getRecentClips } from "../lib/db";
 import { hideQuickWindow } from "../lib/desktop";
 import { copyClipToClipboard } from "../lib/clipCopy";
+import { saveCurrentClipboardText } from "../lib/clipboardTextCaptureRuntime";
 import {
   applyDocumentTheme,
   readStoredTheme,
@@ -21,6 +22,12 @@ export function QuickCopyWindow() {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const loadClips = useCallback(async () => {
+    const settings = await getAppSettings();
+
+    await saveCurrentClipboardText(settings).catch((error) => {
+      console.debug("Could not refresh clipboard before quick copy:", error);
+    });
+
     const rows = await getRecentClips({
       query,
       limit: 30,

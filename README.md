@@ -704,7 +704,7 @@ Thumbs.db
 
 - [x] Add app icon
 - [x] Add installer builds
-- [ ] Add Windows build
+- [x] Add Windows build
 - [x] Add Intel/universal macOS build
 - [x] Add macOS build
 - [ ] Add Linux build

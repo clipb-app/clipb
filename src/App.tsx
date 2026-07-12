@@ -23,7 +23,7 @@ import {
   getAllTags,
   getAppSettings,
   getClipsByRangeWithFilters,
-  getDailyCountsForMonth,
+  getDailyCountsForRange,
   getTagsForClipIds,
   removeTagFromClip,
   runRetentionCleanup,
@@ -50,6 +50,7 @@ import {
 import {
   formatDayHeading,
   formatViewTitle,
+  getCalendarRangeForView,
   getRangeForView,
   moveDate,
   toDayKey,
@@ -205,9 +206,10 @@ export default function App() {
   );
 
   const loadDailyCounts = useCallback(async () => {
-    const counts = await getDailyCountsForMonth(selectedDate);
+    const range = getCalendarRangeForView(selectedDate, viewMode);
+    const counts = await getDailyCountsForRange(range.start, range.end);
     setDailyCounts(counts);
-  }, [selectedDate]);
+  }, [selectedDate, viewMode]);
 
   const loadAllTags = useCallback(async () => {
     const tags = await getAllTags();

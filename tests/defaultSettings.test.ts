@@ -8,7 +8,7 @@ test("default settings define local-first behavior", () => {
     protectPinnedClips: true,
     watchClipboard: true,
     themeMode: "system",
-    themePalette: "clipb",
+    themePalette: "system-neutral",
     launchOnStartup: true,
     checkForUpdatesAutomatically: true,
     updateChannel: "public",
