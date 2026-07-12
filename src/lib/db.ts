@@ -565,10 +565,17 @@ export async function getAllClipTagsForArchive(): Promise<
 export async function getDailyCountsForMonth(
   date: Date,
 ): Promise<DailyCount[]> {
-  const db = await getDb();
-
   const start = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime();
+
+  return getDailyCountsForRange(start, end);
+}
+
+export async function getDailyCountsForRange(
+  start: number,
+  end: number,
+): Promise<DailyCount[]> {
+  const db = await getDb();
 
   return db.select<DailyCount[]>(
     `

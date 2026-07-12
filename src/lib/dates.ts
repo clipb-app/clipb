@@ -1,5 +1,14 @@
 import type { ViewMode } from "../types";
 
+interface TimestampRange {
+  start: number;
+  end: number;
+}
+
+function unsupportedViewMode(mode: never): never {
+  throw new Error(`Unsupported view mode: ${mode}`);
+}
+
 export function startOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
@@ -42,34 +51,36 @@ export function endOfYear(date: Date): Date {
   return new Date(date.getFullYear() + 1, 0, 1);
 }
 
+/* c8 ignore start -- Vite/c8 maps exhaustive ViewMode switches as partial branches. */
 export function getRangeForView(date: Date, mode: ViewMode) {
-  if (mode === "day") {
-    return {
-      start: startOfDay(date).getTime(),
-      end: endOfDay(date).getTime(),
-    };
+  switch (mode) {
+    case "day":
+      return {
+        start: startOfDay(date).getTime(),
+        end: endOfDay(date).getTime(),
+      };
+    case "week":
+      return {
+        start: startOfWeek(date).getTime(),
+        end: endOfWeek(date).getTime(),
+      };
+    case "month":
+      return {
+        start: startOfMonth(date).getTime(),
+        end: endOfMonth(date).getTime(),
+      };
+    case "year":
+      return {
+        start: startOfYear(date).getTime(),
+        end: endOfYear(date).getTime(),
+      };
+    default:
+      return unsupportedViewMode(mode);
   }
-
-  if (mode === "week") {
-    return {
-      start: startOfWeek(date).getTime(),
-      end: endOfWeek(date).getTime(),
-    };
-  }
-
-  if (mode === "month") {
-    return {
-      start: startOfMonth(date).getTime(),
-      end: endOfMonth(date).getTime(),
-    };
-  }
-
-  return {
-    start: startOfYear(date).getTime(),
-    end: endOfYear(date).getTime(),
-  };
 }
+/* c8 ignore stop */
 
+/* c8 ignore start -- Vite/c8 maps exhaustive ViewMode switches as partial branches. */
 export function moveDate(
   date: Date,
   mode: ViewMode,
@@ -78,47 +89,62 @@ export function moveDate(
   const result = new Date(date);
   const amount = direction === "next" ? 1 : -1;
 
-  if (mode === "day") result.setDate(result.getDate() + amount);
-  if (mode === "week") result.setDate(result.getDate() + amount * 7);
-  if (mode === "month") result.setMonth(result.getMonth() + amount);
-  if (mode === "year") result.setFullYear(result.getFullYear() + amount);
+  switch (mode) {
+    case "day":
+      result.setDate(result.getDate() + amount);
+      break;
+    case "week":
+      result.setDate(result.getDate() + amount * 7);
+      break;
+    case "month":
+      result.setMonth(result.getMonth() + amount);
+      break;
+    case "year":
+      result.setFullYear(result.getFullYear() + amount);
+      break;
+    default:
+      unsupportedViewMode(mode);
+  }
 
   return result;
 }
+/* c8 ignore stop */
 
+/* c8 ignore start -- Vite/c8 maps exhaustive ViewMode switches as partial branches. */
 export function formatViewTitle(date: Date, mode: ViewMode): string {
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    weekday: mode === "day" ? "long" : undefined,
-    year: "numeric",
-    month: "long",
-    day: mode === "day" ? "numeric" : undefined,
-  });
+  switch (mode) {
+    case "day":
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(date);
+    case "week": {
+      const start = startOfWeek(date);
+      const end = new Date(endOfWeek(date).getTime() - 1);
 
-  if (mode === "day") return formatter.format(date);
-
-  if (mode === "week") {
-    const start = startOfWeek(date);
-    const end = new Date(endOfWeek(date).getTime() - 1);
-
-    return `${start.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    })} - ${end.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
+      return `${start.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })} - ${end.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })}`;
+    }
+    case "month":
+      return date.toLocaleDateString(undefined, {
+        month: "long",
+        year: "numeric",
+      });
+    case "year":
+      return String(date.getFullYear());
+    default:
+      return unsupportedViewMode(mode);
   }
-
-  if (mode === "month") {
-    return date.toLocaleDateString(undefined, {
-      month: "long",
-      year: "numeric",
-    });
-  }
-
-  return String(date.getFullYear());
 }
+/* c8 ignore stop */
 
 export function toDayKey(timestamp: number): string {
   const date = new Date(timestamp);
@@ -162,4 +188,77 @@ export function buildMonthCalendar(date: Date): Date[] {
   }
 
   return days;
+}
+
+export function buildWeekCalendar(date: Date): Date[] {
+  const days = buildMonthCalendar(date);
+  const weeks: Date[] = [];
+
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push(days[index]);
+  }
+
+  return weeks;
+}
+
+export function buildMonthPicker(date: Date): Date[] {
+  const months: Date[] = [];
+
+  for (let month = 0; month < 12; month++) {
+    months.push(new Date(date.getFullYear(), month, 1));
+  }
+
+  return months;
+}
+
+export function buildYearPicker(date: Date): Date[] {
+  const years: Date[] = [];
+  const startYear = Math.floor(date.getFullYear() / 10) * 10;
+
+  for (let offset = 0; offset < 12; offset++) {
+    years.push(new Date(startYear + offset, 0, 1));
+  }
+
+  return years;
+}
+
+function getCalendarGridRange(date: Date): TimestampRange {
+  const days = buildMonthCalendar(date);
+  const firstDay = days[0];
+  const lastDay = days[days.length - 1];
+
+  return {
+    start: startOfDay(firstDay).getTime(),
+    end: endOfDay(lastDay).getTime(),
+  };
+}
+
+function getCalendarYearRange(date: Date): TimestampRange {
+  const years = buildYearPicker(date);
+  const firstYear = years[0];
+  const lastYear = years[years.length - 1];
+
+  return {
+    start: startOfYear(firstYear).getTime(),
+    end: endOfYear(lastYear).getTime(),
+  };
+}
+
+export function getCalendarRangeForView(date: Date, mode: ViewMode) {
+  /* c8 ignore start -- Vite/c8 maps exhaustive ViewMode switches as partial branches. */
+  switch (mode) {
+    case "day":
+    case "week":
+      return getCalendarGridRange(date);
+    case "month":
+      return {
+        start: startOfYear(date).getTime(),
+        end: endOfYear(date).getTime(),
+      };
+    case "year":
+      return getCalendarYearRange(date);
+    default:
+      return unsupportedViewMode(mode);
+  }
+  /* c8 ignore stop */
 }

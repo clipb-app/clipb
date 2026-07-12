@@ -37,7 +37,16 @@ export const THEME_PALETTE_OPTIONS: Array<{
   };
 }> = [
   {
-    label: "ClipB Default",
+    label: "System Neutral",
+    value: "system-neutral",
+    description: "Soft white, gray borders, and dark gray.",
+    swatches: {
+      light: ["#f8fafc", "#374151", "#e5e7eb"],
+      dark: ["#1f2328", "#e5e7eb", "#6b7280"],
+    },
+  },
+  {
+    label: "ClipB Branded",
     value: "clipb",
     description: "Slate, mint, blue, and orange.",
     swatches: {
