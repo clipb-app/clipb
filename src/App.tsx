@@ -133,6 +133,7 @@ export default function App() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(() => {
     const storedTheme = readStoredTheme();
 
@@ -229,7 +230,7 @@ export default function App() {
 
   const { error: watcherError } = useClipboardWatcher({
     settings,
-    intervalMs: 1000,
+    enabled: settingsLoaded,
     onSaved: handleClipboardSaved,
   });
 
@@ -287,6 +288,7 @@ export default function App() {
       };
 
       setSettings(mergedSettings);
+      setSettingsLoaded(true);
 
       if (launchOnStartup !== loadedSettings.launchOnStartup) {
         await updateAppSettings(mergedSettings);

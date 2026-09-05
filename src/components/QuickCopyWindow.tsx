@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clipboard, Search, X } from "lucide-react";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import type { Clip } from "../types";
 import { formatTime, toDayKey } from "../lib/dates";
 import { getAppSettings, getRecentClips } from "../lib/db";
 import { hideQuickWindow } from "../lib/desktop";
 import { copyClipToClipboard } from "../lib/clipCopy";
-import { saveCurrentClipboardText } from "../lib/clipboardTextCaptureRuntime";
+import {
+  CLIPBOARD_CHECK_EVENT,
+  CLIPS_CHANGED_EVENT,
+} from "../lib/clipboardWatcherEvents";
 import {
   applyDocumentTheme,
   readStoredTheme,
@@ -20,19 +24,16 @@ export function QuickCopyWindow() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const loadRequestRef = useRef(0);
 
   const loadClips = useCallback(async () => {
-    const settings = await getAppSettings();
-
-    await saveCurrentClipboardText(settings).catch((error) => {
-      console.debug("Could not refresh clipboard before quick copy:", error);
-    });
-
+    const request = ++loadRequestRef.current;
     const rows = await getRecentClips({
       query,
       limit: 30,
     });
 
+    if (request !== loadRequestRef.current) return;
     setClips(rows);
     setActiveIndex(0);
   }, [query]);
@@ -55,6 +56,20 @@ export function QuickCopyWindow() {
 
   useEffect(() => {
     loadClips().catch(console.error);
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen(CLIPS_CHANGED_EVENT, () => {
+      loadClips().catch(console.error);
+    }).then((dispose) => {
+      if (disposed) dispose();
+      else unlisten = dispose;
+    }).catch(console.error);
+
+    return () => {
+      disposed = true;
+      loadRequestRef.current++;
+      unlisten?.();
+    };
   }, [loadClips]);
 
   useEffect(() => {
@@ -64,6 +79,7 @@ export function QuickCopyWindow() {
       inputRef.current?.focus();
       refreshTheme().catch(console.error);
       loadClips().catch(console.error);
+      void emitTo("main", CLIPBOARD_CHECK_EVENT).catch(console.error);
     }
 
     function handleVisibilityChange() {
