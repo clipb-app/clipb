@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import type { AppSettings } from "../types";
 import { saveClip } from "../lib/db";
 import { scanClipPrivacy } from "../lib/privacy";
@@ -16,17 +17,22 @@ import {
 } from "../lib/imageFileImport";
 import { readNativeClipboardFilePaths } from "../lib/nativeClipboardFiles";
 import { consumeSuppressedFilePaths } from "../lib/clipboardSuppression";
+import {
+  CLIPBOARD_CHECK_EVENT,
+  CLIPS_CHANGED_EVENT,
+  startClipboardChecks,
+} from "../lib/clipboardWatcherEvents";
 
 interface UseClipboardWatcherOptions {
   settings: AppSettings;
-  intervalMs?: number;
-  onSaved?: () => void;
+  enabled: boolean;
+  onSaved?: () => void | Promise<void>;
   onSkipped?: (reason: string) => void;
 }
 
 export function useClipboardWatcher({
   settings,
-  intervalMs = 1000,
+  enabled,
   onSaved,
   onSkipped,
 }: UseClipboardWatcherOptions) {
@@ -36,19 +42,27 @@ export function useClipboardWatcher({
   const lastSeenTextRef = useRef<string>("");
   const lastSeenImageHashRef = useRef<string>("");
   const lastSeenImagePathRef = useRef<string>("");
-  const isCheckingRef = useRef(false);
   const lastImageProbeAtRef = useRef(0);
   const lastSeenNativeFileKeyRef = useRef<string>("");
+  const optionsRef = useRef({ settings, onSaved, onSkipped });
+  optionsRef.current = { settings, onSaved, onSkipped };
 
   const IMAGE_PROBE_COOLDOWN_MS = 3500;
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
 
-    async function checkClipboard() {
-      if (isCheckingRef.current) return;
+    function notifySaved() {
+      setLastSavedAt(Date.now());
+      setError(null);
+      void emitTo("quick", CLIPS_CHANGED_EVENT).catch(console.error);
+      void Promise.resolve(optionsRef.current.onSaved?.()).catch(console.error);
+    }
 
-      isCheckingRef.current = true;
+    async function checkClipboard() {
+      if (cancelled) return;
+      const { settings, onSkipped } = optionsRef.current;
 
       try {
         if (!settings.watchClipboard) return;
@@ -127,9 +141,7 @@ export function useClipboardWatcher({
           }
 
           if (savedAny) {
-            setLastSavedAt(Date.now());
-            onSaved?.();
-            setError(null);
+            notifySaved();
           }
 
           return;
@@ -156,9 +168,7 @@ export function useClipboardWatcher({
             }
 
             if (imageResult.clip) {
-              setLastSavedAt(Date.now());
-              onSaved?.();
-              setError(null);
+              notifySaved();
               return;
             }
 
@@ -191,9 +201,7 @@ export function useClipboardWatcher({
           }
 
           if (savedAny) {
-            setLastSavedAt(Date.now());
-            onSaved?.();
-            setError(null);
+            notifySaved();
           }
 
           return;
@@ -236,14 +244,12 @@ export function useClipboardWatcher({
             const saved = await saveImageFileFromPath(imageFilePath);
 
             if (saved) {
-              setLastSavedAt(Date.now());
-              onSaved?.();
-              setError(null);
+              notifySaved();
               return;
             }
 
             // If it was a duplicate, still refresh once so the UI stays honest.
-            onSaved?.();
+            notifySaved();
             setError(null);
             return;
           } catch (error) {
@@ -266,25 +272,33 @@ export function useClipboardWatcher({
         lastSeenTextRef.current = cleanText;
 
         if (saved) {
-          setLastSavedAt(Date.now());
-          onSaved?.();
+          notifySaved();
         }
 
         setError(null);
-      } finally {
-        isCheckingRef.current = false;
+      } catch (error) {
+        if (!cancelled) {
+          setError("Could not check the clipboard. ClipB will retry automatically.");
+          console.error("Clipboard capture failed:", error);
+        }
       }
     }
 
-    checkClipboard();
-
-    const timer = window.setInterval(checkClipboard, intervalMs);
+    const stop = startClipboardChecks({
+      listen: (check) => listen(CLIPBOARD_CHECK_EVENT, check),
+      check: checkClipboard,
+      locks: navigator.locks,
+      onError: (error) => {
+        console.error("Could not start background clipboard capture:", error);
+        if (!cancelled) setError("Could not start background clipboard capture.");
+      },
+    });
 
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      stop();
     };
-  }, [settings, intervalMs, onSaved, onSkipped]);
+  }, [enabled]);
 
   return {
     error,

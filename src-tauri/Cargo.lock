@@ -732,6 +732,7 @@ dependencies = [
  "clipboard-win 5.4.1",
  "hex",
  "image",
+ "objc2-app-kit",
  "serde",
  "serde_json",
  "sha2 0.11.0",

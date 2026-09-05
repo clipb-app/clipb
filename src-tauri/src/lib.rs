@@ -1,3 +1,6 @@
+mod clipboard_monitor;
+mod quick_window;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -151,6 +154,7 @@ fn get_or_create_quick_window(app: &tauri::AppHandle) -> Result<WebviewWindow, S
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
+    .visible_on_all_workspaces(true)
     .skip_taskbar(true)
     .visible(false)
     .build()
@@ -160,8 +164,10 @@ fn get_or_create_quick_window(app: &tauri::AppHandle) -> Result<WebviewWindow, S
 fn show_quick(app: &tauri::AppHandle) -> Result<(), String> {
     let window = get_or_create_quick_window(app)?;
 
+    quick_window::configure_overlay(&window).map_err(|error| error.to_string())?;
+    quick_window::position_on_pointer_display(&window).map_err(|error| error.to_string())?;
     window.show().map_err(|error| error.to_string())?;
-    window.center().map_err(|error| error.to_string())?;
+    window.unminimize().map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())?;
 
     Ok(())
@@ -172,7 +178,7 @@ fn toggle_quick(app: &tauri::AppHandle) -> Result<(), String> {
 
     let is_visible = window.is_visible().map_err(|error| error.to_string())?;
 
-    if is_visible {
+    if is_visible && window.is_focused().map_err(|error| error.to_string())? {
         window.hide().map_err(|error| error.to_string())?;
     } else {
         show_quick(app)?;
@@ -874,6 +880,11 @@ pub fn run() {
             write_file_paths_to_clipboard
         ])
         .setup(|app| {
+            app.manage(clipboard_monitor::ClipboardMonitor::start(
+                app.handle().clone(),
+            )?);
+            get_or_create_quick_window(app.handle())?;
+
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_process::init())?;
 
@@ -942,6 +953,12 @@ pub fn run() {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            app_handle
+                .state::<clipboard_monitor::ClipboardMonitor>()
+                .stop();
+        }
+
         #[cfg(target_os = "macos")]
         {
             if let tauri::RunEvent::Reopen { .. } = event {
