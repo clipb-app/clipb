@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Git tag to publish, for example v0.8.0
+        description: Existing Git tag matching the app version, for example v0.8.4
         required: true
         type: string
   push:
@@ -22,10 +22,14 @@ jobs:
   release-checks:
     name: Release Checks
     runs-on: macos-latest
+    outputs:
+      commit: ${{ steps.release_source.outputs.commit }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag_name || github.ref_name }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -49,6 +53,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate release versions and record source commit
+        id: release_source
+        env:
+          RELEASE_TAG: ${{ inputs.tag_name || github.ref_name }}
+        run: |
+          pnpm run release:check --tag "$RELEASE_TAG"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Run tests
         run: pnpm test
 
@@ -64,6 +76,10 @@ jobs:
 
       - name: Check Rust
         run: cargo check --locked
+        working-directory: src-tauri
+
+      - name: Test native runtime
+        run: cargo test --locked
         working-directory: src-tauri
 
   macos-release:
@@ -82,6 +98,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-checks.outputs.commit }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -131,6 +149,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-checks.outputs.commit }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

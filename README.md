@@ -424,18 +424,19 @@ pnpm tauri build
 GitHub Actions workflows live in `.github/workflows`.
 
 - `app-ci.yml` runs on pull requests and pushes to any branch.
-- `app-ci.yml` installs dependencies, runs tests, checks the current coverage baseline, builds the frontend, checks Rust formatting, and runs `cargo check`.
+- `app-ci.yml` installs dependencies, checks that app versions match, runs tests, checks the current coverage baseline, builds the frontend, checks Rust formatting, and runs `cargo check` and `cargo test`.
 - `app-ci.yml` also runs a Windows compile check on `windows-latest` so Windows support does not rely on a local Windows machine.
-- `app-release.yml` runs from a pushed version tag such as `v0.8.0`, or manually from GitHub Actions with a tag name.
+- `app-release.yml` runs from a pushed version tag such as `v0.8.4`, or manually from GitHub Actions with an existing tag name.
 - `app-release.yml` runs the release checks first, then builds Apple Silicon, Universal macOS, and Windows NSIS release drafts using Tauri.
+- Release checks reject tags that do not match the app version. Every platform builds the same checked commit, including manual workflow runs.
 
 The CI coverage gate currently protects the existing baseline:
 
 ```text
 lines >= 80%
 statements >= 80%
-branches >= 75%
-functions >= 75%
+branches >= 80%
+functions >= 80%
 ```
 
 Raise those thresholds toward 90% as more tests are added.
@@ -460,26 +461,30 @@ The value of `TAURI_SIGNING_PRIVATE_KEY` should be the contents of the private u
 
 To publish a release through GitHub Actions:
 
-1. Merge release-ready code into `main`.
-2. Update app versions in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
-3. Commit the version bump.
-4. Push a version tag:
+1. On a release branch, update app versions in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+2. Run `cargo check --manifest-path src-tauri/Cargo.toml` to update the app package version in `src-tauri/Cargo.lock`.
+3. Run `pnpm run release:check --tag v0.8.4`, then the usual tests and build checks.
+4. Commit the version files and merge the release branch into `main` after CI passes.
+5. From the updated `main` checkout, create and push the matching tag:
 
 ```bash
-git tag v0.8.0
-git push origin v0.8.0
+git tag v0.8.4
+git push origin v0.8.4
 ```
 
 GitHub then runs `app-release.yml`, creates a draft release, uploads the macOS and Windows bundles, uploads updater signatures, and uploads `latest.json` for the updater endpoint.
 
-For a Windows test build, use a prerelease tag:
+Before publishing the draft, verify that installer filenames, the installed app version, and the `version` in `latest.json` match the release tag without its leading `v`. Uploading a new tag or renaming installer files does not change the version inside an app. Keep published tags intact; correct a released version mismatch with a new patch release.
+
+For a Windows test build, set all four app versions to the exact prerelease version, such as `0.8.4-beta.1`, and validate before tagging:
 
 ```bash
-git tag v0.8.0-beta.1
-git push origin v0.8.0-beta.1
+pnpm run release:check --tag v0.8.4-beta.1
+git tag v0.8.4-beta.1
+git push origin v0.8.4-beta.1
 ```
 
-Tags with a hyphen, such as `v0.8.0-beta.1`, are marked as prereleases by the release workflow. The workflow builds a Windows NSIS `.exe` installer that can be downloaded from the draft release, reviewed, and then published as a prerelease for testing.
+Tags with a hyphen, such as `v0.8.4-beta.1`, are marked as prereleases by the release workflow. The workflow builds a Windows NSIS `.exe` installer that can be downloaded from the draft release, reviewed, and then published as a prerelease for testing. Increment the app version as well as the tag for every beta so the updater can distinguish them.
 
 You can also run the same workflow manually from GitHub:
 
@@ -487,8 +492,8 @@ You can also run the same workflow manually from GitHub:
 2. Go to **Actions**.
 3. Select **App Release**.
 4. Click **Run workflow**.
-5. Select the release-ready branch, usually `main`.
-6. Enter a tag name such as `v0.8.0`.
+5. Select the branch containing the release workflow, usually `main`.
+6. Enter an existing tag name such as `v0.8.4`. The workflow checks out that tag's commit, not the selected branch's latest code.
 
 If release asset upload fails with a token permission error, go to **Settings → Actions → General → Workflow permissions** and allow **Read and write permissions**.
 
