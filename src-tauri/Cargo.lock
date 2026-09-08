@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "clipb-app"
-version = "0.8.2"
+version = "0.8.4"
 dependencies = [
  "active-win-pos-rs",
  "arboard",
